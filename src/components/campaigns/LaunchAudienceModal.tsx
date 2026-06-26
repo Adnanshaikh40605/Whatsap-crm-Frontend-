@@ -1,0 +1,249 @@
+import { useMemo, useState } from 'react'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { FileSpreadsheet, Send, Upload, Users, X } from 'lucide-react'
+import { campaignApi, crmApi } from '../../lib/api'
+import { Button } from '../ui/Button'
+import { Input } from '../ui/Input'
+import type { Campaign } from '../../types/bot'
+
+type AudienceMode = 'existing' | 'manual' | 'upload'
+
+interface Props {
+  campaign: Campaign | null
+  open: boolean
+  onClose: () => void
+}
+
+type ApiEnvelope<T> = { data?: T; results?: T }
+type Group = { id: string; name: string; contact_count: number }
+
+const unwrap = <T,>(value: ApiEnvelope<T> | T): T => {
+  if (value && typeof value === 'object' && 'data' in value) return (value as ApiEnvelope<T>).data as T
+  if (value && typeof value === 'object' && 'results' in value) return (value as ApiEnvelope<T>).results as T
+  return value as T
+}
+
+const normalizePhone = (value: string) => {
+  const digits = value.replace(/\D/g, '')
+  if (digits.length === 10) return `91${digits}`
+  if (digits.startsWith('00')) return digits.slice(2)
+  return digits
+}
+
+const extractPhones = (text: string) => Array.from(new Set(
+  text
+    .split(/[\s,;]+/)
+    .map(normalizePhone)
+    .filter((phone) => phone.length >= 10),
+))
+
+export function LaunchAudienceModal({ campaign, open, onClose }: Props) {
+  const queryClient = useQueryClient()
+  const [mode, setMode] = useState<AudienceMode>('existing')
+  const [selectedGroup, setSelectedGroup] = useState('')
+  const [manualNumbers, setManualNumbers] = useState('')
+  const [groupName, setGroupName] = useState('')
+  const [file, setFile] = useState<File | null>(null)
+  const [error, setError] = useState('')
+
+  const { data: groups } = useQuery({
+    queryKey: ['contact-groups'],
+    queryFn: () => crmApi.groups().then((r) => unwrap<Group[]>(r.data)),
+    enabled: open,
+    refetchOnMount: 'always',
+  })
+
+  const groupList = (groups as Group[]) ?? []
+  const phones = useMemo(() => extractPhones(manualNumbers), [manualNumbers])
+
+  const defaultGroupName = () => `${campaign?.name || 'Campaign'} audience ${new Date().toLocaleString()}`
+
+  const launchMutation = useMutation({
+    mutationFn: async () => {
+      if (!campaign) return
+      setError('')
+      let groupId: string | null = selectedGroup || null
+
+      if (mode === 'manual') {
+        if (phones.length === 0) throw new Error('Add at least one valid phone number.')
+        const groupResponse = await crmApi.createGroup({
+          name: groupName.trim() || defaultGroupName(),
+          category: 'campaign',
+        })
+        const group = unwrap<Group>(groupResponse.data)
+        groupId = group.id
+
+        await Promise.all(phones.map((phone, index) => crmApi.createContact({
+          first_name: `Campaign Contact ${index + 1}`,
+          phone,
+          source: 'campaign',
+          group_ids: [groupId],
+        })))
+      }
+
+      if (mode === 'upload') {
+        if (!file) throw new Error('Upload a CSV or Excel file first.')
+        const groupResponse = await crmApi.createGroup({
+          name: groupName.trim() || defaultGroupName(),
+          category: 'campaign',
+        })
+        const group = unwrap<Group>(groupResponse.data)
+        groupId = group.id
+
+        const payload = new FormData()
+        payload.append('file', file)
+        payload.append('group_id', groupId)
+        await crmApi.importContacts(payload)
+      }
+
+      await campaignApi.update(campaign.id, {
+        contact_group: groupId,
+        audience_filter: {},
+      })
+      await campaignApi.launch(campaign.id)
+    },
+    onSuccess: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['campaigns'] }),
+        queryClient.invalidateQueries({ queryKey: ['contact-groups'] }),
+        queryClient.invalidateQueries({ queryKey: ['contacts'] }),
+      ])
+      onClose()
+      setMode('existing')
+      setSelectedGroup('')
+      setManualNumbers('')
+      setGroupName('')
+      setFile(null)
+    },
+    onError: (err) => {
+      setError(err instanceof Error ? err.message : 'Campaign launch failed. Please check the audience and try again.')
+    },
+  })
+
+  if (!open || !campaign) return null
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+      <div className="w-full max-w-2xl rounded-[24px] border bg-white shadow-2xl" style={{ borderColor: 'var(--border-subtle)' }}>
+        <div className="flex items-start justify-between border-b px-6 py-5" style={{ borderColor: 'var(--border)' }}>
+          <div>
+            <h2 className="text-2xl font-bold tracking-[-0.24px]" style={{ color: 'var(--text-primary)' }}>
+              Launch campaign
+            </h2>
+            <p className="mt-1 text-sm" style={{ color: 'var(--text-muted)' }}>
+              Choose who will receive <strong>{campaign.name}</strong> before sending.
+            </p>
+          </div>
+          <button onClick={onClose} className="rounded-full p-2 hover:bg-[var(--hover)]">
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+
+        <div className="space-y-5 px-6 py-5">
+          <div className="grid gap-3 md:grid-cols-3">
+            {[
+              { id: 'existing', label: 'Saved group', icon: Users, note: 'Use all contacts or a group' },
+              { id: 'manual', label: 'Manual numbers', icon: Send, note: 'Paste phone numbers' },
+              { id: 'upload', label: 'Excel / CSV', icon: FileSpreadsheet, note: 'Import a file first' },
+            ].map((option) => {
+              const Icon = option.icon
+              const active = mode === option.id
+              return (
+                <button
+                  key={option.id}
+                  type="button"
+                  onClick={() => setMode(option.id as AudienceMode)}
+                  className={`rounded-2xl border px-4 py-4 text-left transition ${active ? 'border-black bg-[#f1f4f7]' : 'bg-white hover:bg-[var(--hover)]'}`}
+                  style={{ borderColor: active ? undefined : 'var(--border)' }}
+                >
+                  <Icon className="mb-3 h-5 w-5 text-brand-600" />
+                  <div className="font-bold" style={{ color: 'var(--text-primary)' }}>{option.label}</div>
+                  <div className="mt-1 text-xs" style={{ color: 'var(--text-muted)' }}>{option.note}</div>
+                </button>
+              )
+            })}
+          </div>
+
+          {mode === 'existing' && (
+            <div className="space-y-3">
+              <label className="block text-sm font-bold" style={{ color: 'var(--text-primary)' }}>Recipient group</label>
+              <select
+                value={selectedGroup}
+                onChange={(event) => setSelectedGroup(event.target.value)}
+                className="h-12 w-full rounded-lg border bg-white px-3 text-base"
+                style={{ borderColor: 'var(--border)', color: 'var(--text-primary)' }}
+              >
+                <option value="">All active contacts</option>
+                {groupList.map((group) => (
+                  <option key={group.id} value={group.id}>
+                    {group.name} ({group.contact_count} contacts)
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+
+          {mode === 'manual' && (
+            <div className="space-y-4">
+              <Input
+                label="New group name"
+                value={groupName}
+                onChange={(event) => setGroupName(event.target.value)}
+                placeholder={defaultGroupName()}
+              />
+              <div className="space-y-1.5">
+                <label className="block text-sm font-bold" style={{ color: 'var(--text-primary)' }}>Phone numbers</label>
+                <textarea
+                  value={manualNumbers}
+                  onChange={(event) => setManualNumbers(event.target.value)}
+                  placeholder="9372792693&#10;919876543210"
+                  rows={6}
+                  className="w-full rounded-lg border bg-white px-3 py-3 text-base outline-none focus:border-[#1876f2] focus:ring-2 focus:ring-[#1876f2]/10"
+                  style={{ borderColor: 'var(--border)', color: 'var(--text-primary)' }}
+                />
+                <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
+                  {phones.length} valid number{phones.length === 1 ? '' : 's'} found. Indian 10-digit numbers are saved with country code 91.
+                </p>
+              </div>
+            </div>
+          )}
+
+          {mode === 'upload' && (
+            <div className="space-y-4">
+              <Input
+                label="New group name"
+                value={groupName}
+                onChange={(event) => setGroupName(event.target.value)}
+                placeholder={defaultGroupName()}
+              />
+              <label className="flex min-h-32 cursor-pointer flex-col items-center justify-center rounded-2xl border border-dashed bg-white p-6 text-center hover:bg-[var(--hover)]" style={{ borderColor: 'var(--border)' }}>
+                <Upload className="mb-2 h-6 w-6 text-brand-600" />
+                <span className="font-bold" style={{ color: 'var(--text-primary)' }}>{file ? file.name : 'Upload CSV or Excel file'}</span>
+                <span className="mt-1 text-xs" style={{ color: 'var(--text-muted)' }}>Columns supported: phone, mobile, number, name, first_name, last_name, email, company</span>
+                <input
+                  type="file"
+                  accept=".csv,.xlsx"
+                  className="hidden"
+                  onChange={(event) => setFile(event.target.files?.[0] ?? null)}
+                />
+              </label>
+            </div>
+          )}
+
+          {error && (
+            <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-bold text-red-700">
+              {error}
+            </div>
+          )}
+        </div>
+
+        <div className="flex flex-col-reverse gap-3 border-t px-6 py-5 sm:flex-row sm:justify-end" style={{ borderColor: 'var(--border)' }}>
+          <Button variant="ghost" onClick={onClose}>Cancel</Button>
+          <Button onClick={() => launchMutation.mutate()} loading={launchMutation.isPending}>
+            <Send className="h-4 w-4" /> Launch now
+          </Button>
+        </div>
+      </div>
+    </div>
+  )
+}

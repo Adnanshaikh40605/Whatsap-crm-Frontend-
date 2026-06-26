@@ -1,0 +1,129 @@
+@import "tailwindcss";
+@import "@xyflow/react/dist/style.css";
+
+@theme {
+  --color-brand-50: #eef6ff;
+  --color-brand-100: #dbeeff;
+  --color-brand-500: #0091ff;
+  --color-brand-600: #0064e0;
+  --color-brand-700: #0457cb;
+  --color-navy: #0a1317;
+  --color-surface: #ffffff;
+  --color-border: #dee3e9;
+  --font-sans: "Optimistic VF", Montserrat, Helvetica, Arial, "Noto Sans", sans-serif;
+}
+
+:root {
+  --bg: #ffffff;
+  --bg-elevated: #ffffff;
+  --bg-card: #ffffff;
+  --bg-subtle: #f1f4f7;
+  --text-primary: #0a1317;
+  --text-secondary: #444950;
+  --text-muted: #5d6c7b;
+  --border: #ced0d4;
+  --border-subtle: #dee3e9;
+  --sidebar-bg: #ffffff;
+  --header-bg: #ffffff;
+  --hover: #f1f4f7;
+  --accent: #0064e0;
+  --accent-pressed: #0457cb;
+  --accent-soft: #0091ff;
+  --accent-subtle: rgba(0, 145, 255, 0.15);
+  --ink-button: #000000;
+  --on-ink-button: #ffffff;
+  --success: #31a24c;
+  --warning: #f7b928;
+  --critical: #e41e3f;
+  --shadow-xs: 0 0 0 1px #dee3e9 inset;
+  --shadow-sm: none;
+  --shadow-md: rgba(20, 22, 26, 0.3) 0px 1px 4px 0px;
+  --shadow-lg: rgba(20, 22, 26, 0.3) 0px 1px 4px 0px;
+  --radius: 24px;
+  --radius-feature: 32px;
+  --radius-control: 8px;
+  --radius-pill: 100px;
+  --font-heading: "Optimistic VF", Montserrat, Helvetica, Arial, "Noto Sans", sans-serif;
+}
+
+.dark {
+  --bg: #ffffff;
+  --bg-elevated: #ffffff;
+  --bg-card: #ffffff;
+  --bg-subtle: #f1f4f7;
+  --text-primary: #0a1317;
+  --text-secondary: #444950;
+  --text-muted: #5d6c7b;
+  --border: #ced0d4;
+  --border-subtle: #dee3e9;
+  --sidebar-bg: #ffffff;
+  --header-bg: #ffffff;
+  --hover: #f1f4f7;
+  --accent: #0064e0;
+  --accent-pressed: #0457cb;
+  --accent-subtle: rgba(0, 145, 255, 0.15);
+}
+
+body {
+  background-color: var(--bg);
+  color: var(--text-primary);
+  font-family: var(--font-sans);
+  font-feature-settings: "ss01", "ss02";
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-heading);
+  font-feature-settings: "ss01", "ss02";
+  letter-spacing: 0;
+}
+
+/* Premium card surface */
+.surface-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-sm);
+  transition: box-shadow 0.2s ease, border-color 0.2s ease;
+}
+
+.surface-card:hover {
+  border-color: var(--border);
+}
+
+.surface-interactive {
+  transition: background 0.15s ease, transform 0.15s ease;
+  border-radius: var(--radius-control);
+}
+
+.surface-interactive:hover {
+  background: var(--hover);
+}
+
+/* Animations */
+@keyframes fade-in {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-fade-in {
+  animation: fade-in 0.2s ease-out;
+}
+
+@keyframes pulse-subtle {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.6; }
+}
+
+.animate-pulse-subtle {
+  animation: pulse-subtle 2s ease-in-out infinite;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
+
+.react-flow__node { font-size: 12px; }

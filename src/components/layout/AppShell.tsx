@@ -1,0 +1,301 @@
+import { useState, useEffect, type ComponentType } from 'react'
+import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
+import {
+  AppBar, Avatar, Box, Divider, Drawer, IconButton, List, ListItemButton, ListItemIcon,
+  ListItemText, Menu, MenuItem, Toolbar, Tooltip, Typography, ListSubheader, useMediaQuery,
+} from '@mui/material'
+import { useTheme } from '@mui/material/styles'
+import {
+  SpaceDashboardOutlined, ForumOutlined, DescriptionOutlined, AssessmentOutlined,
+  CampaignOutlined, SettingsOutlined, DnsOutlined,
+  BusinessOutlined, Menu as MenuIcon, LightModeOutlined,
+  DarkModeOutlined, UnfoldMore, Check, Logout, WhatsApp, GroupsOutlined,
+  PermMediaOutlined, MenuBookOutlined, SmsOutlined, AccountTreeOutlined, FolderOutlined,
+} from '@mui/icons-material'
+import { useAuth } from '../../context/AuthContext'
+import { useTheme as useColorMode } from '../../context/ThemeContext'
+
+const DRAWER_WIDTH = 260
+const API_ORIGIN = (import.meta.env.VITE_API_URL || 'http://localhost:8000/api/v1').replace(/\/api\/v1\/?$/, '')
+
+type NavItem = { to: string; icon: ComponentType; label: string; end?: boolean }
+type NavSection = { label: string; items: NavItem[] }
+
+const PROJECT_NAV_SECTIONS: NavSection[] = [
+  { label: 'Overview', items: [
+    { to: '/projects', icon: FolderOutlined, label: 'Projects' },
+  ] },
+]
+
+const WHATSAPP_NAV_SECTIONS: NavSection[] = [
+  { label: 'Overview', items: [
+    { to: '/projects', icon: FolderOutlined, label: 'Projects' },
+    { to: '/whatsapp-crm/dashboard', icon: SpaceDashboardOutlined, label: 'Dashboard' },
+  ] },
+  { label: 'Messaging', items: [
+    { to: '/whatsapp-crm/inbox', icon: ForumOutlined, label: 'Inbox' },
+    { to: '/whatsapp-crm/templates', icon: DescriptionOutlined, label: 'Templates' },
+    { to: '/whatsapp-crm/contacts', icon: GroupsOutlined, label: 'Contacts' },
+    { to: '/whatsapp-crm/contact-groups', icon: AccountTreeOutlined, label: 'Contact Groups' },
+    { to: '/whatsapp-crm/message-logs', icon: DnsOutlined, label: 'Message Logs' },
+    { to: '/whatsapp-crm/media', icon: PermMediaOutlined, label: 'Media' },
+  ] },
+  { label: 'Growth', items: [
+    { to: '/whatsapp-crm/campaigns', icon: CampaignOutlined, label: 'Campaigns' },
+    { to: '/whatsapp-crm/automation', icon: AccountTreeOutlined, label: 'Automation' },
+    { to: '/whatsapp-crm/reports', icon: AssessmentOutlined, label: 'Reports' },
+  ] },
+  { label: 'Admin', items: [
+    { to: '/whatsapp-crm/api-settings', icon: WhatsApp, label: 'API Settings' },
+    { to: '/whatsapp-crm/setup-guide', icon: MenuBookOutlined, label: 'Setup Guide' },
+    { to: '/whatsapp-crm/settings', icon: SettingsOutlined, label: 'Settings' },
+  ] },
+]
+
+const SMS_NAV_SECTIONS: NavSection[] = [
+  { label: 'Overview', items: [
+    { to: '/projects', icon: FolderOutlined, label: 'Projects' },
+    { to: '/sms-crm/dashboard', icon: SpaceDashboardOutlined, label: 'Dashboard' },
+  ] },
+  { label: 'Messaging', items: [
+    { to: '/sms-crm/templates', icon: DescriptionOutlined, label: 'SMS Templates' },
+    { to: '/sms-crm/campaigns', icon: CampaignOutlined, label: 'Bulk SMS Campaigns' },
+    { to: '/sms-crm/contacts', icon: GroupsOutlined, label: 'Contacts' },
+    { to: '/sms-crm/contact-groups', icon: AccountTreeOutlined, label: 'Contact Groups' },
+    { to: '/sms-crm/sender-ids', icon: SmsOutlined, label: 'Sender IDs' },
+    { to: '/sms-crm/message-logs', icon: DnsOutlined, label: 'Message Logs' },
+  ] },
+  { label: 'Admin', items: [
+    { to: '/sms-crm/api-settings', icon: SettingsOutlined, label: 'API Settings' },
+    { to: '/sms-crm/reports', icon: AssessmentOutlined, label: 'Reports' },
+  ] },
+]
+
+export function AppShell() {
+  const { user, organization, organizations, logout, switchOrganization } = useAuth()
+  const { theme: mode, toggleTheme } = useColorMode()
+  const theme = useTheme()
+  const navigate = useNavigate()
+  const location = useLocation()
+  const isDesktop = useMediaQuery(theme.breakpoints.up('lg'))
+  const [mobileOpen, setMobileOpen] = useState(false)
+  const [orgAnchor, setOrgAnchor] = useState<null | HTMLElement>(null)
+  const [userAnchor, setUserAnchor] = useState<null | HTMLElement>(null)
+  const brandName = typeof organization?.branding?.brand_name === 'string' && organization.branding.brand_name.trim()
+    ? organization.branding.brand_name
+    : 'WhatsFlow'
+  const projectType = location.pathname.startsWith('/sms-crm')
+    ? 'sms'
+    : location.pathname.startsWith('/whatsapp-crm')
+      ? 'whatsapp'
+      : 'projects'
+  const navSections = projectType === 'projects'
+    ? PROJECT_NAV_SECTIONS
+    : projectType === 'sms'
+      ? SMS_NAV_SECTIONS
+      : WHATSAPP_NAV_SECTIONS
+  const headerSubtitle = projectType === 'sms'
+    ? 'SMS templates, DLT setup, sender IDs, campaigns, and reports'
+    : projectType === 'whatsapp'
+      ? 'WhatsApp templates, contacts, media, and campaigns'
+      : 'Select a CRM project'
+  const brandSubtitle = projectType === 'sms'
+    ? 'SMS Business'
+    : projectType === 'projects'
+      ? 'CRM Projects'
+      : 'WhatsApp Business'
+  const logoSrc = organization?.logo
+    ? organization.logo.startsWith('http')
+      ? organization.logo
+      : `${API_ORIGIN}${organization.logo}`
+    : ''
+
+  useEffect(() => {
+    if (organizations && organizations.length === 0) {
+      navigate('/projects')
+    }
+  }, [organizations, navigate])
+
+  const handleLogout = () => { logout(); navigate('/login') }
+
+  const navItem = (item: NavItem) => {
+    const Icon = item.icon
+    return (
+      <ListItemButton
+        key={item.to}
+        component={NavLink}
+        to={item.to}
+        end={item.end}
+        onClick={() => setMobileOpen(false)}
+        sx={{
+          px: 1.5, py: 1, mb: 0.25,
+          color: 'text.secondary',
+          '&.active': {
+            bgcolor: '#0A1317', color: '#ffffff',
+            '& .MuiListItemIcon-root': { color: '#ffffff' },
+            fontWeight: 600,
+          },
+          '&:hover': { bgcolor: 'action.hover' },
+        }}
+      >
+        <ListItemIcon sx={{ minWidth: 34, color: 'text.secondary' }}><Icon /></ListItemIcon>
+        <ListItemText slotProps={{ primary: { sx: { fontSize: 14, fontWeight: 500 } } }}>{item.label}</ListItemText>
+      </ListItemButton>
+    )
+  }
+
+  const drawer = (
+    <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column', bgcolor: 'background.paper' }}>
+      {/* Brand */}
+      <Box sx={{ height: 72, display: 'flex', alignItems: 'center', gap: 1.25, px: 2.5, flexShrink: 0 }}>
+        <Avatar onClick={() => navigate('/projects')} sx={{ bgcolor: 'primary.main', width: 36, height: 36, cursor: 'pointer' }}>
+          {logoSrc ? <Box component="img" src={logoSrc} alt="" sx={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <WhatsApp sx={{ fontSize: 18 }} />}
+        </Avatar>
+        <Box onClick={() => navigate('/projects')} sx={{ cursor: 'pointer' }}>
+          <Typography sx={{ fontWeight: 700, fontSize: 16, lineHeight: 1.1 }}>{brandName}</Typography>
+          <Typography variant="caption" color="text.secondary">{brandSubtitle}</Typography>
+        </Box>
+      </Box>
+      <Divider />
+
+      {/* Nav */}
+      <Box sx={{ flex: 1, overflowY: 'auto', px: 1.5, py: 1.5 }}>
+        {navSections.map((section) => (
+          <List
+            key={section.label}
+            dense
+            subheader={
+              <ListSubheader disableSticky sx={{
+                bgcolor: 'transparent', color: 'text.disabled', fontSize: 11, fontWeight: 700,
+                letterSpacing: '0.06em', textTransform: 'uppercase', lineHeight: 2.2, px: 1.5,
+              }}>
+                {section.label}
+              </ListSubheader>
+            }
+            sx={{ mb: 0.5 }}
+          >
+            {section.items.map(navItem)}
+          </List>
+        ))}
+        {user?.is_superuser && (
+          <List dense subheader={
+            <ListSubheader disableSticky sx={{
+              bgcolor: 'transparent', color: 'text.disabled', fontSize: 11, fontWeight: 700,
+              letterSpacing: '0.06em', textTransform: 'uppercase', lineHeight: 2.2, px: 1.5,
+            }}>Platform</ListSubheader>
+          }>
+            {navItem({ to: '/admin/companies', icon: BusinessOutlined, label: 'Companies' })}
+          </List>
+        )}
+      </Box>
+
+      {/* User footer */}
+      <Divider />
+      <Box sx={{ p: 1.5, flexShrink: 0 }}>
+        <ListItemButton onClick={(e) => setUserAnchor(e.currentTarget)} sx={{ px: 1, py: 1 }}>
+          <Avatar sx={{ width: 30, height: 30, bgcolor: 'primary.light', color: 'primary.main', fontSize: 13, fontWeight: 700, mr: 1 }}>
+            {user?.first_name?.[0]?.toUpperCase() || 'U'}
+          </Avatar>
+          <ListItemText
+            primary={user?.full_name || user?.email}
+            secondary={organization?.name}
+            slotProps={{
+              primary: { noWrap: true, sx: { fontSize: 13, fontWeight: 600 } },
+              secondary: { noWrap: true, sx: { fontSize: 11 } },
+            }}
+          />
+          <UnfoldMore fontSize="small" sx={{ color: 'text.disabled' }} />
+        </ListItemButton>
+      </Box>
+    </Box>
+  )
+
+  return (
+    <Box sx={{ display: 'flex', height: '100vh', overflow: 'hidden' }}>
+      {/* Sidebar */}
+      <Box component="nav" sx={{ width: { lg: DRAWER_WIDTH }, flexShrink: { lg: 0 } }}>
+        <Drawer
+          variant={isDesktop ? 'permanent' : 'temporary'}
+          open={isDesktop ? true : mobileOpen}
+          onClose={() => setMobileOpen(false)}
+          ModalProps={{ keepMounted: true }}
+          sx={{
+            '& .MuiDrawer-paper': {
+              width: DRAWER_WIDTH, boxSizing: 'border-box',
+              borderRight: `1px solid ${theme.palette.divider}`,
+            },
+          }}
+        >
+          {drawer}
+        </Drawer>
+      </Box>
+
+      {/* Main column */}
+      <Box sx={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column' }}>
+        <AppBar
+          position="static"
+          color="inherit"
+          sx={{ borderBottom: `1px solid ${theme.palette.divider}`, bgcolor: 'background.paper' }}
+        >
+          <Toolbar sx={{ minHeight: 72, gap: 1, px: { xs: 2, lg: 4 } }}>
+            {!isDesktop && (
+              <IconButton edge="start" onClick={() => setMobileOpen(true)}><MenuIcon /></IconButton>
+            )}
+            <Box sx={{ flex: 1, minWidth: 0 }}>
+              <Typography variant="body2" color="text.secondary" noWrap>
+                {headerSubtitle}
+              </Typography>
+            </Box>
+
+            <Tooltip title={mode === 'dark' ? 'Light mode' : 'Dark mode'}>
+              <IconButton onClick={toggleTheme}>
+                {mode === 'dark' ? <LightModeOutlined /> : <DarkModeOutlined />}
+              </IconButton>
+            </Tooltip>
+
+            <IconButton onClick={(e) => setOrgAnchor(e.currentTarget)} sx={{ borderRadius: 100, px: 2, gap: 0.75, border: '1px solid', borderColor: 'divider' }}>
+              <BusinessOutlined fontSize="small" sx={{ color: 'text.secondary' }} />
+              <Typography variant="body2" noWrap sx={{ fontWeight: 600, maxWidth: 120, display: { xs: 'none', sm: 'block' } }}>
+                {organization?.name}
+              </Typography>
+              <UnfoldMore fontSize="small" sx={{ color: 'text.disabled' }} />
+            </IconButton>
+          </Toolbar>
+        </AppBar>
+
+        <Box component="main" sx={{ flex: 1, overflowY: 'auto', bgcolor: 'background.default', p: { xs: 2, lg: 4 } }}>
+          <Outlet />
+        </Box>
+      </Box>
+
+      {/* Org switcher menu */}
+      <Menu anchorEl={orgAnchor} open={Boolean(orgAnchor)} onClose={() => setOrgAnchor(null)}>
+        <Typography variant="caption" color="text.secondary" sx={{ px: 2, py: 0.5, display: 'block', fontWeight: 700 }}>
+          Switch company
+        </Typography>
+        {organizations.map((org) => (
+          <MenuItem key={org.id} selected={org.id === organization?.id}
+            onClick={() => { switchOrganization(org.id); setOrgAnchor(null) }}>
+            <ListItemText>{org.name}</ListItemText>
+            {org.id === organization?.id && <Check fontSize="small" color="primary" sx={{ ml: 2 }} />}
+          </MenuItem>
+        ))}
+        <Divider />
+        <MenuItem onClick={() => { setOrgAnchor(null); navigate('/projects') }}>
+          <ListItemIcon><BusinessOutlined fontSize="small" /></ListItemIcon> Projects
+        </MenuItem>
+      </Menu>
+
+      {/* User menu */}
+      <Menu anchorEl={userAnchor} open={Boolean(userAnchor)} onClose={() => setUserAnchor(null)}>
+        <MenuItem onClick={() => { setUserAnchor(null); navigate('/whatsapp-crm/settings') }}>
+          <ListItemIcon><SettingsOutlined fontSize="small" /></ListItemIcon> Settings
+        </MenuItem>
+        <Divider />
+        <MenuItem onClick={handleLogout} sx={{ color: 'error.main' }}>
+          <ListItemIcon><Logout fontSize="small" sx={{ color: 'error.main' }} /></ListItemIcon> Log out
+        </MenuItem>
+      </Menu>
+    </Box>
+  )
+}
