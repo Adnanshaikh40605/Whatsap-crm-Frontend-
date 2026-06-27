@@ -6,30 +6,34 @@ const PRODUCTION_HOSTS = new Set([
   'www.driveronhire.ai',
 ])
 
-function isLocalhostApi(url: string): boolean {
-  return url.includes('localhost') || url.includes('127.0.0.1')
+function isLocalHost(hostname: string): boolean {
+  return hostname === 'localhost' || hostname === '127.0.0.1'
 }
 
-/** Resolve API base URL for current environment (dev vs production). */
+/**
+ * Resolve API URL at runtime from the browser hostname.
+ * - localhost / 127.0.0.1  → local Django API
+ * - driveronhire.ai        → production API
+ * Works even if an old build baked in localhost from VITE_API_URL.
+ */
 export function getApiUrl(): string {
-  const configured = import.meta.env.VITE_API_URL as string | undefined
-
   if (typeof window !== 'undefined') {
     const host = window.location.hostname
+    if (isLocalHost(host)) {
+      return LOCAL_API
+    }
     if (PRODUCTION_HOSTS.has(host)) {
       return PRODUCTION_API
     }
   }
 
-  if (configured && !isLocalhostApi(configured)) {
-    return configured.replace(/\/$/, '')
+  // Vite dev server / build-time fallback
+  if (import.meta.env.DEV) {
+    const configured = import.meta.env.VITE_API_URL as string | undefined
+    return configured || LOCAL_API
   }
 
-  if (import.meta.env.PROD) {
-    return PRODUCTION_API
-  }
-
-  return configured || LOCAL_API
+  return PRODUCTION_API
 }
 
 export function getApiOrigin(): string {

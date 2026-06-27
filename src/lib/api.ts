@@ -1,14 +1,12 @@
 import axios, { type AxiosError, type InternalAxiosRequestConfig } from 'axios'
 import { getApiUrl } from './config'
 
-const API_URL = getApiUrl()
-
 export const api = axios.create({
-  baseURL: API_URL,
   headers: { 'Content-Type': 'application/json' },
 })
 
 api.interceptors.request.use((config: InternalAxiosRequestConfig) => {
+  config.baseURL = getApiUrl()
   const token = localStorage.getItem('access_token')
   const orgId = localStorage.getItem('organization_id')
   if (token) config.headers.Authorization = `Bearer ${token}`
@@ -25,7 +23,7 @@ api.interceptors.response.use(
       const refresh = localStorage.getItem('refresh_token')
       if (refresh) {
         try {
-          const { data } = await axios.post(`${API_URL}/auth/refresh/`, { refresh })
+          const { data } = await axios.post(`${getApiUrl()}/auth/refresh/`, { refresh })
           const tokens = data.data?.tokens ?? data
           localStorage.setItem('access_token', tokens.access)
           if (tokens.refresh) localStorage.setItem('refresh_token', tokens.refresh)
