@@ -1,6 +1,7 @@
 import axios, { type AxiosError, type InternalAxiosRequestConfig } from 'axios'
+import { getApiUrl } from './config'
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api/v1'
+const API_URL = getApiUrl()
 
 export const api = axios.create({
   baseURL: API_URL,
@@ -51,6 +52,10 @@ export const authApi = {
     organization_name: string
   }) => api.post('/auth/register/', data),
   me: () => api.get('/auth/me/'),
+  changePassword: (old_password: string, new_password: string) =>
+    api.post('/auth/change-password/', { old_password, new_password }),
+  updateProfile: (data: Partial<{ first_name: string; last_name: string; phone: string; username: string }>) =>
+    api.patch('/auth/me/', data),
   passwordReset: (email: string) => api.post('/auth/password-reset/', { email }),
   passwordResetConfirm: (uid: string, token: string, password: string) =>
     api.post('/auth/password-reset/confirm/', { uid, token, password }),
@@ -59,8 +64,12 @@ export const authApi = {
 export const orgApi = {
   list: () => api.get('/organizations/'),
   current: () => api.get('/organizations/current/'),
-  switch: (id: string) => api.post(`/organizations/${id}/switch/`),
-  create: (data: { name: string; description?: string; project_type?: string }) => api.post('/organizations/', data),
+  switch: (id: string, project_password?: string) =>
+    api.post(`/organizations/${id}/switch/`, project_password ? { project_password } : {}),
+  verifyAccess: (id: string, project_password: string) =>
+    api.post(`/organizations/${id}/verify_access/`, { project_password }),
+  create: (data: { name: string; description?: string; project_type?: string; project_password: string }) =>
+    api.post('/organizations/', data),
   update: (id: string, data: Record<string, unknown>) => api.patch(`/organizations/${id}/`, data),
   updateAppearance: (id: string, data: FormData) => api.patch(`/organizations/${id}/`, data, {
     headers: { 'Content-Type': 'multipart/form-data' },

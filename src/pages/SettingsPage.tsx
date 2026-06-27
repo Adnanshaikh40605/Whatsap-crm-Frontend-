@@ -78,8 +78,9 @@ const SETTINGS_CATEGORIES = [
     path: '/whatsapp-crm/settings/appearance',
   },
 ]
+import { getApiOrigin, getApiUrl } from '../lib/config'
 
-const API_ORIGIN = (import.meta.env.VITE_API_URL || 'http://localhost:8000/api/v1').replace(/\/api\/v1\/?$/, '')
+const API_ORIGIN = getApiOrigin()
 
 export function SettingsPage() {
   const { section } = useParams()
@@ -320,7 +321,7 @@ export function SettingsPage() {
         {section === 'api' && (
           <div className="space-y-4">
             <div className="rounded-xl p-4 font-mono text-xs" style={{ background: '#0f172a', color: '#22c55e' }}>
-              <p>API Base: {import.meta.env.VITE_API_URL || 'http://localhost:8000/api/v1'}</p>
+              <p>API Base: {getApiUrl()}</p>
               <p className="mt-1 text-slate-400">Authorization: Bearer {'<token>'}</p>
               <p className="text-slate-400">X-Organization-ID: {'<org_uuid>'}</p>
             </div>

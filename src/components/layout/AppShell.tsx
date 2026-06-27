@@ -11,12 +11,15 @@ import {
   BusinessOutlined, Menu as MenuIcon, LightModeOutlined,
   DarkModeOutlined, UnfoldMore, Check, Logout, WhatsApp, GroupsOutlined,
   PermMediaOutlined, MenuBookOutlined, SmsOutlined, AccountTreeOutlined, FolderOutlined,
+  PersonOutlined,
 } from '@mui/icons-material'
 import { useAuth } from '../../context/AuthContext'
 import { useTheme as useColorMode } from '../../context/ThemeContext'
+import { canAccessModule } from '../../lib/rbac'
+import { getApiOrigin } from '../../lib/config'
 
 const DRAWER_WIDTH = 260
-const API_ORIGIN = (import.meta.env.VITE_API_URL || 'http://localhost:8000/api/v1').replace(/\/api\/v1\/?$/, '')
+const API_ORIGIN = getApiOrigin()
 
 type NavItem = { to: string; icon: ComponentType; label: string; end?: boolean }
 type NavSection = { label: string; items: NavItem[] }
@@ -31,6 +34,7 @@ const WHATSAPP_NAV_SECTIONS: NavSection[] = [
   { label: 'Overview', items: [
     { to: '/projects', icon: FolderOutlined, label: 'Projects' },
     { to: '/whatsapp-crm/dashboard', icon: SpaceDashboardOutlined, label: 'Dashboard' },
+    { to: '/account', icon: PersonOutlined, label: 'Account Settings' },
   ] },
   { label: 'Messaging', items: [
     { to: '/whatsapp-crm/inbox', icon: ForumOutlined, label: 'Inbox' },
@@ -56,6 +60,7 @@ const SMS_NAV_SECTIONS: NavSection[] = [
   { label: 'Overview', items: [
     { to: '/projects', icon: FolderOutlined, label: 'Projects' },
     { to: '/sms-crm/dashboard', icon: SpaceDashboardOutlined, label: 'Dashboard' },
+    { to: '/account', icon: PersonOutlined, label: 'Account Settings' },
   ] },
   { label: 'Messaging', items: [
     { to: '/sms-crm/templates', icon: DescriptionOutlined, label: 'SMS Templates' },
@@ -71,8 +76,28 @@ const SMS_NAV_SECTIONS: NavSection[] = [
   ] },
 ]
 
+const STAFF_WHATSAPP_NAV: NavSection[] = [
+  { label: 'Overview', items: [
+    { to: '/projects', icon: FolderOutlined, label: 'Projects' },
+    { to: '/account', icon: PersonOutlined, label: 'Account Settings' },
+  ] },
+  { label: 'Messaging', items: [
+    { to: '/whatsapp-crm/inbox', icon: ForumOutlined, label: 'Inbox' },
+  ] },
+]
+
+const STAFF_SMS_NAV: NavSection[] = [
+  { label: 'Overview', items: [
+    { to: '/projects', icon: FolderOutlined, label: 'Projects' },
+    { to: '/account', icon: PersonOutlined, label: 'Account Settings' },
+  ] },
+  { label: 'Messaging', items: [
+    { to: '/sms-crm/send', icon: SmsOutlined, label: 'Send SMS' },
+  ] },
+]
+
 export function AppShell() {
-  const { user, organization, organizations, logout, switchOrganization } = useAuth()
+  const { user, organization, organizations, logout, switchOrganization, isStaff } = useAuth()
   const { theme: mode, toggleTheme } = useColorMode()
   const theme = useTheme()
   const navigate = useNavigate()
@@ -91,9 +116,13 @@ export function AppShell() {
       : 'projects'
   const navSections = projectType === 'projects'
     ? PROJECT_NAV_SECTIONS
-    : projectType === 'sms'
-      ? SMS_NAV_SECTIONS
-      : WHATSAPP_NAV_SECTIONS
+    : isStaff
+      ? projectType === 'sms'
+        ? STAFF_SMS_NAV
+        : STAFF_WHATSAPP_NAV
+      : projectType === 'sms'
+        ? SMS_NAV_SECTIONS
+        : WHATSAPP_NAV_SECTIONS
   const headerSubtitle = projectType === 'sms'
     ? 'SMS templates, DLT setup, sender IDs, campaigns, and reports'
     : projectType === 'whatsapp'
@@ -275,7 +304,18 @@ export function AppShell() {
         </Typography>
         {organizations.map((org) => (
           <MenuItem key={org.id} selected={org.id === organization?.id}
-            onClick={() => { switchOrganization(org.id); setOrgAnchor(null) }}>
+            onClick={async () => {
+              setOrgAnchor(null)
+              if (org.has_project_password && !user?.is_superuser) {
+                navigate('/projects')
+                return
+              }
+              try {
+                await switchOrganization(org.id)
+              } catch {
+                navigate('/projects')
+              }
+            }}>
             <ListItemText>{org.name}</ListItemText>
             {org.id === organization?.id && <Check fontSize="small" color="primary" sx={{ ml: 2 }} />}
           </MenuItem>
@@ -288,9 +328,14 @@ export function AppShell() {
 
       {/* User menu */}
       <Menu anchorEl={userAnchor} open={Boolean(userAnchor)} onClose={() => setUserAnchor(null)}>
-        <MenuItem onClick={() => { setUserAnchor(null); navigate('/whatsapp-crm/settings') }}>
-          <ListItemIcon><SettingsOutlined fontSize="small" /></ListItemIcon> Settings
+        <MenuItem onClick={() => { setUserAnchor(null); navigate('/account') }}>
+          <ListItemIcon><PersonOutlined fontSize="small" /></ListItemIcon> Account Settings
         </MenuItem>
+        {canAccessModule(user, 'settings') ? (
+          <MenuItem onClick={() => { setUserAnchor(null); navigate('/whatsapp-crm/settings') }}>
+            <ListItemIcon><SettingsOutlined fontSize="small" /></ListItemIcon> Project Settings
+          </MenuItem>
+        ) : null}
         <Divider />
         <MenuItem onClick={handleLogout} sx={{ color: 'error.main' }}>
           <ListItemIcon><Logout fontSize="small" sx={{ color: 'error.main' }} /></ListItemIcon> Log out
