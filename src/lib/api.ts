@@ -75,6 +75,8 @@ export const orgApi = {
   members: (orgId: string) => api.get(`/organizations/${orgId}/members/`),
   addMember: (orgId: string, data: { email: string; role: string }) =>
     api.post(`/organizations/${orgId}/members/`, data),
+  delete: (id: string, project_password: string) =>
+    api.delete(`/organizations/${id}/`, { data: { project_password } }),
 }
 
 export const crmApi = {

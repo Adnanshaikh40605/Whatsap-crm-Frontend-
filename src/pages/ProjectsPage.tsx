@@ -2,10 +2,10 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   Avatar, Box, Button, Chip, Dialog, DialogActions, DialogContent, DialogTitle,
-  MenuItem, Stack, Tab, Tabs, TextField, Typography,
+  IconButton, MenuItem, Stack, Tab, Tabs, TextField, Tooltip, Typography,
 } from '@mui/material'
 import {
-  AddBusinessOutlined, ArrowForwardOutlined, LockOutlined, LogoutOutlined,
+  AddBusinessOutlined, ArrowForwardOutlined, DeleteOutlined, LockOutlined, LogoutOutlined,
   RocketLaunchOutlined, SmsOutlined, WhatsApp,
 } from '@mui/icons-material'
 import { useAuth, staffDefaultPath } from '../context/AuthContext'
@@ -83,7 +83,7 @@ function getSmsStatus(org: Organization) {
 }
 
 export function ProjectsPage() {
-  const { user, organizations, switchOrganization, refreshUser, logout } = useAuth()
+  const { user, organization, organizations, switchOrganization, refreshUser, logout, isSuperAdmin } = useAuth()
   const navigate = useNavigate()
   const [tab, setTab] = useState<ProjectTab>('whatsapp')
   const [form, setForm] = useState({
@@ -100,6 +100,11 @@ export function ProjectsPage() {
   const [accessPassword, setAccessPassword] = useState('')
   const [accessError, setAccessError] = useState('')
   const [accessLoading, setAccessLoading] = useState(false)
+  const [deleteTarget, setDeleteTarget] = useState<Organization | null>(null)
+  const [deleteStep, setDeleteStep] = useState<'confirm' | 'password' | null>(null)
+  const [deletePassword, setDeletePassword] = useState('')
+  const [deleteError, setDeleteError] = useState('')
+  const [deleteLoading, setDeleteLoading] = useState(false)
 
   const filteredProjects = organizations.filter((org) => org.project_type === tab)
   const canCreate = canManageProjects(user)
@@ -161,6 +166,44 @@ export function ProjectsPage() {
       setAccessError(err.response?.data?.message || 'Invalid project password')
     } finally {
       setAccessLoading(false)
+    }
+  }
+
+  const startDeleteProject = (project: Organization) => {
+    setDeleteTarget(project)
+    setDeleteStep('confirm')
+    setDeletePassword('')
+    setDeleteError('')
+  }
+
+  const closeDeleteDialog = () => {
+    setDeleteTarget(null)
+    setDeleteStep(null)
+    setDeletePassword('')
+    setDeleteError('')
+  }
+
+  const confirmDeleteProject = () => {
+    setDeleteStep('password')
+    setDeletePassword('')
+    setDeleteError('')
+  }
+
+  const submitDeleteProject = async () => {
+    if (!deleteTarget || !deletePassword.trim()) return
+    setDeleteError('')
+    setDeleteLoading(true)
+    try {
+      await orgApi.delete(deleteTarget.id, deletePassword)
+      if (organization?.id === deleteTarget.id) {
+        localStorage.removeItem('organization_id')
+      }
+      closeDeleteDialog()
+      await refreshUser()
+    } catch (err: any) {
+      setDeleteError(err.response?.data?.message || 'Failed to delete project')
+    } finally {
+      setDeleteLoading(false)
     }
   }
 
@@ -340,7 +383,21 @@ export function ProjectsPage() {
                           Created {new Date(project.created_at || Date.now()).toLocaleDateString()}
                         </Typography>
                       </Box>
-                      <Chip size="small" label={status.label} sx={{ mt: 0.5, ...status.chipSx }} />
+                      <Stack direction="row" spacing={0.5} sx={{ alignItems: 'center' }}>
+                        {isSuperAdmin ? (
+                          <Tooltip title="Delete project">
+                            <IconButton
+                              size="small"
+                              aria-label={`Delete ${project.name}`}
+                              onClick={() => startDeleteProject(project)}
+                              sx={{ color: 'error.main' }}
+                            >
+                              <DeleteOutlined fontSize="small" />
+                            </IconButton>
+                          </Tooltip>
+                        ) : null}
+                        <Chip size="small" label={status.label} sx={{ mt: 0.5, ...status.chipSx }} />
+                      </Stack>
                     </Stack>
 
                     <Stack spacing={1.25} sx={{ flex: 1 }}>
@@ -404,6 +461,53 @@ export function ProjectsPage() {
           <Button onClick={() => setPasswordDialog({ open: false, project: null })}>Cancel</Button>
           <Button variant="contained" onClick={submitProjectPassword} disabled={!accessPassword.trim() || accessLoading}>
             {accessLoading ? 'Verifying…' : 'Continue'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog open={deleteStep === 'confirm'} onClose={closeDeleteDialog} maxWidth="xs" fullWidth>
+        <DialogTitle>Delete project?</DialogTitle>
+        <DialogContent>
+          <Typography variant="body2" color="text.secondary">
+            Are you sure you want to delete <strong>{deleteTarget?.name}</strong>? This will permanently remove all
+            contacts, templates, campaigns, and messages for this project.
+          </Typography>
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2 }}>
+          <Button onClick={closeDeleteDialog}>Cancel</Button>
+          <Button color="error" variant="contained" onClick={confirmDeleteProject}>
+            Yes, continue
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog open={deleteStep === 'password'} onClose={closeDeleteDialog} maxWidth="xs" fullWidth>
+        <DialogTitle>Confirm with project password</DialogTitle>
+        <DialogContent>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+            Enter the project password for <strong>{deleteTarget?.name}</strong> to permanently delete it.
+          </Typography>
+          <TextField
+            autoFocus
+            fullWidth
+            type="password"
+            label="Project Password"
+            value={deletePassword}
+            onChange={(e) => setDeletePassword(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && submitDeleteProject()}
+            error={Boolean(deleteError)}
+            helperText={deleteError}
+          />
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2 }}>
+          <Button onClick={closeDeleteDialog}>Cancel</Button>
+          <Button
+            color="error"
+            variant="contained"
+            onClick={submitDeleteProject}
+            disabled={!deletePassword.trim() || deleteLoading}
+          >
+            {deleteLoading ? 'Deleting…' : 'Delete project'}
           </Button>
         </DialogActions>
       </Dialog>
