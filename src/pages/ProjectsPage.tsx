@@ -1,12 +1,15 @@
-import { useMemo, useState } from 'react'
+import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
-  Avatar, Box, Button, Chip, MenuItem, Stack, Tab, Tabs, TextField, Typography,
+  Avatar, Box, Button, Chip, Dialog, DialogActions, DialogContent, DialogTitle,
+  MenuItem, Stack, Tab, Tabs, TextField, Typography,
 } from '@mui/material'
 import {
-  AddBusinessOutlined, ArrowForwardOutlined, LogoutOutlined, RocketLaunchOutlined, SmsOutlined, WhatsApp,
+  AddBusinessOutlined, ArrowForwardOutlined, LockOutlined, LogoutOutlined,
+  RocketLaunchOutlined, SmsOutlined, WhatsApp,
 } from '@mui/icons-material'
-import { useAuth } from '../context/AuthContext'
+import { useAuth, staffDefaultPath } from '../context/AuthContext'
+import { canManageProjects } from '../lib/rbac'
 import { orgApi } from '../lib/api'
 import { AppCard } from '../components/common'
 import type { Organization } from '../types'
@@ -86,26 +89,33 @@ export function ProjectsPage() {
   const [form, setForm] = useState({
     name: '',
     project_type: 'whatsapp' as ProjectType,
+    project_password: '',
   })
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [passwordDialog, setPasswordDialog] = useState<{ open: boolean; project: Organization | null }>({
+    open: false,
+    project: null,
+  })
+  const [accessPassword, setAccessPassword] = useState('')
+  const [accessError, setAccessError] = useState('')
+  const [accessLoading, setAccessLoading] = useState(false)
 
-  const filteredProjects = useMemo(
-    () => organizations.filter((org) => org.project_type === tab),
-    [organizations, tab],
-  )
+  const filteredProjects = organizations.filter((org) => org.project_type === tab)
+  const canCreate = canManageProjects(user)
 
   const createProject = async (event: React.FormEvent) => {
     event.preventDefault()
-    if (!form.name.trim()) return
+    if (!form.name.trim() || !form.project_password.trim()) return
     setError('')
     setLoading(true)
     try {
       await orgApi.create({
         name: form.name.trim(),
         project_type: form.project_type,
+        project_password: form.project_password,
       })
-      setForm({ name: '', project_type: form.project_type })
+      setForm({ name: '', project_type: form.project_type, project_password: '' })
       setTab(form.project_type === 'sms' ? 'sms' : 'whatsapp')
       await refreshUser()
     } catch (err: any) {
@@ -115,9 +125,43 @@ export function ProjectsPage() {
     }
   }
 
+  const enterProject = async (project: Organization, password?: string) => {
+    await switchOrganization(project.id, password)
+    const defaultPath = user?.platform_role === 'staff'
+      ? staffDefaultPath(project.project_type === 'sms' ? 'sms' : 'whatsapp')
+      : project.project_type === 'sms'
+        ? '/sms-crm/dashboard'
+        : '/whatsapp-crm/dashboard'
+    navigate(defaultPath)
+  }
+
   const viewProject = async (project: Organization) => {
-    await switchOrganization(project.id)
-    navigate(project.project_type === 'sms' ? '/sms-crm/dashboard' : '/whatsapp-crm/dashboard')
+    const needsPassword = project.has_project_password && !user?.is_superuser
+    if (needsPassword) {
+      setPasswordDialog({ open: true, project })
+      setAccessPassword('')
+      setAccessError('')
+      return
+    }
+    try {
+      await enterProject(project)
+    } catch (err: any) {
+      setError(err.response?.data?.message || 'Failed to open project')
+    }
+  }
+
+  const submitProjectPassword = async () => {
+    if (!passwordDialog.project || !accessPassword.trim()) return
+    setAccessError('')
+    setAccessLoading(true)
+    try {
+      await enterProject(passwordDialog.project, accessPassword)
+      setPasswordDialog({ open: false, project: null })
+    } catch (err: any) {
+      setAccessError(err.response?.data?.message || 'Invalid project password')
+    } finally {
+      setAccessLoading(false)
+    }
   }
 
   const isSms = tab === 'sms'
@@ -153,127 +197,102 @@ export function ProjectsPage() {
       </Box>
 
       <Box sx={{ maxWidth: 1080, mx: 'auto', px: { xs: 2, md: 3 }, py: { xs: 3, md: 4.5 } }}>
-        <Box
-          component="form"
-          onSubmit={createProject}
-          sx={{
-            display: 'grid',
-            gridTemplateColumns: { xs: '1fr', md: '1.1fr 0.9fr' },
-            alignItems: 'center',
-            gap: { xs: 3, md: 4 },
-            minHeight: { md: 285 },
-            mb: { xs: 4, md: 5 },
-            px: { xs: 3, sm: 4, md: 5 },
-            py: { xs: 3.5, md: 5 },
-            bgcolor: '#EEF8F4',
-            border: '1px solid #DDEBE7',
-            borderRadius: 2,
-          }}
-        >
-          <Box sx={{ maxWidth: 520 }}>
-            <Typography variant="h2" sx={{ color: '#111818', mb: 1 }}>Create New Project</Typography>
-            <Typography variant="body2" sx={{ color: '#66736F', mb: 2.5 }}>
-              Start a WhatsApp or SMS CRM workspace.
-            </Typography>
+        {canCreate ? (
+          <Box
+            component="form"
+            onSubmit={createProject}
+            sx={{
+              display: 'grid',
+              gridTemplateColumns: { xs: '1fr', md: '1.1fr 0.9fr' },
+              alignItems: 'center',
+              gap: { xs: 3, md: 4 },
+              minHeight: { md: 285 },
+              mb: { xs: 4, md: 5 },
+              px: { xs: 3, sm: 4, md: 5 },
+              py: { xs: 3.5, md: 5 },
+              bgcolor: '#EEF8F4',
+              border: '1px solid #DDEBE7',
+              borderRadius: 2,
+            }}
+          >
+            <Box sx={{ maxWidth: 520 }}>
+              <Typography variant="h2" sx={{ color: '#111818', mb: 1 }}>Create New Project</Typography>
+              <Typography variant="body2" sx={{ color: '#66736F', mb: 2.5 }}>
+                Start a WhatsApp or SMS CRM workspace with its own access password.
+              </Typography>
 
-            <Box
-              sx={{
-                display: 'grid',
-                gridTemplateColumns: { xs: '1fr', sm: '1fr 170px' },
-                gap: 1.5,
-                mb: 2,
-              }}
-            >
-              <Box>
-                <Typography variant="subtitle2" sx={{ mb: 0.75, color: '#1C2C2A' }}>Project Name *</Typography>
+              <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 170px' }, gap: 1.5, mb: 1.5 }}>
+                <Box>
+                  <Typography variant="subtitle2" sx={{ mb: 0.75, color: '#1C2C2A' }}>Project Name *</Typography>
+                  <TextField
+                    value={form.name}
+                    onChange={(event) => setForm((current) => ({ ...current, name: event.target.value }))}
+                    placeholder="Enter project name"
+                    required
+                    fullWidth
+                    sx={formFieldSx}
+                  />
+                </Box>
+                <Box>
+                  <Typography variant="subtitle2" sx={{ mb: 0.75, color: '#1C2C2A' }}>Project Type</Typography>
+                  <TextField
+                    select
+                    value={form.project_type}
+                    onChange={(event) => setForm((current) => ({ ...current, project_type: event.target.value as ProjectType }))}
+                    fullWidth
+                    sx={formFieldSx}
+                  >
+                    {projectTypeOptions.map((option) => (
+                      <MenuItem key={option.value} value={option.value}>{option.label}</MenuItem>
+                    ))}
+                  </TextField>
+                </Box>
+              </Box>
+
+              <Box sx={{ mb: 2 }}>
+                <Typography variant="subtitle2" sx={{ mb: 0.75, color: '#1C2C2A' }}>Project Password *</Typography>
                 <TextField
-                  value={form.name}
-                  onChange={(event) => setForm((current) => ({ ...current, name: event.target.value }))}
-                  placeholder="Enter project name"
+                  type="password"
+                  value={form.project_password}
+                  onChange={(event) => setForm((current) => ({ ...current, project_password: event.target.value }))}
+                  placeholder="Set a unique project password"
                   required
                   fullWidth
                   sx={formFieldSx}
+                  helperText="Required to open this project. Each company/project stays isolated."
                 />
               </Box>
 
-              <Box>
-                <Typography variant="subtitle2" sx={{ mb: 0.75, color: '#1C2C2A' }}>Project Type</Typography>
-                <TextField
-                  select
-                  value={form.project_type}
-                  onChange={(event) => setForm((current) => ({ ...current, project_type: event.target.value as ProjectType }))}
-                  fullWidth
-                  sx={formFieldSx}
-                >
-                  {projectTypeOptions.map((option) => (
-                    <MenuItem key={option.value} value={option.value}>{option.label}</MenuItem>
-                  ))}
-                </TextField>
+              <Button
+                type="submit"
+                variant="contained"
+                disabled={!form.name.trim() || !form.project_password.trim() || loading}
+                sx={{
+                  bgcolor: '#164C4D',
+                  px: 3,
+                  '&:hover': { bgcolor: '#0F3F40' },
+                  '&.Mui-disabled': {
+                    bgcolor: 'rgba(22, 76, 77, 0.12)',
+                    color: 'rgba(22, 76, 77, 0.45)',
+                  },
+                }}
+              >
+                Create
+              </Button>
+              {error ? <Typography color="error" variant="caption" sx={{ display: 'block', mt: 1.5 }}>{error}</Typography> : null}
+            </Box>
+
+            <Box sx={{ display: { xs: 'none', md: 'flex' }, justifyContent: 'center', alignItems: 'center', minHeight: 210 }}>
+              <Box sx={{
+                width: 230, height: 210, position: 'relative', borderRadius: 2,
+                bgcolor: 'rgba(255,255,255,0.66)', border: '1px solid rgba(22,76,77,0.12)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+              }}>
+                <RocketLaunchOutlined sx={{ fontSize: 104, color: '#31A24C', transform: 'rotate(-18deg)' }} />
               </Box>
             </Box>
-
-            <Button
-              type="submit"
-              variant="contained"
-              disabled={!form.name.trim() || loading}
-              sx={{
-                bgcolor: '#164C4D',
-                px: 3,
-                '&:hover': { bgcolor: '#0F3F40' },
-                '&.Mui-disabled': {
-                  bgcolor: 'rgba(22, 76, 77, 0.12)',
-                  color: 'rgba(22, 76, 77, 0.45)',
-                },
-              }}
-            >
-              Create
-            </Button>
-            {error ? <Typography color="error" variant="caption" sx={{ display: 'block', mt: 1.5 }}>{error}</Typography> : null}
           </Box>
-
-          <Box
-            sx={{
-              display: { xs: 'none', md: 'flex' },
-              justifyContent: 'center',
-              alignItems: 'center',
-              minHeight: 210,
-            }}
-          >
-            <Box
-              sx={{
-                width: 230,
-                height: 210,
-                position: 'relative',
-                borderRadius: 2,
-                bgcolor: 'rgba(255,255,255,0.66)',
-                border: '1px solid rgba(22,76,77,0.12)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-              }}
-            >
-              <RocketLaunchOutlined sx={{ fontSize: 104, color: '#31A24C', transform: 'rotate(-18deg)' }} />
-              <Box sx={{
-                position: 'absolute',
-                left: 28,
-                bottom: 30,
-                width: 72,
-                height: 10,
-                borderRadius: 10,
-                bgcolor: '#D7E8E2',
-              }} />
-              <Box sx={{
-                position: 'absolute',
-                right: 22,
-                top: 38,
-                width: 38,
-                height: 38,
-                borderRadius: 1,
-                border: '2px solid #B8D9CE',
-              }} />
-            </Box>
-          </Box>
-        </Box>
+        ) : null}
 
         <Stack direction={{ xs: 'column', md: 'row' }} spacing={2} sx={{ alignItems: { md: 'flex-end' }, justifyContent: 'space-between', mb: 2 }}>
           <Box>
@@ -300,7 +319,9 @@ export function ProjectsPage() {
               {isSms ? <SmsOutlined color="primary" sx={{ fontSize: 48 }} /> : <WhatsApp color="primary" sx={{ fontSize: 48 }} />}
               <Typography variant="h4">No {isSms ? 'SMS' : 'WhatsApp'} projects yet</Typography>
               <Typography variant="body2" color="text.secondary">
-                Create a {isSms ? 'SMS' : 'WhatsApp'} project above. Nothing is shown here unless it exists in the database.
+                {canCreate
+                  ? `Create a ${isSms ? 'SMS' : 'WhatsApp'} project above.`
+                  : 'Ask your admin to assign you to a project.'}
               </Typography>
             </Stack>
           </AppCard>
@@ -332,6 +353,12 @@ export function ProjectsPage() {
                           </Typography>
                         </Box>
                       </Stack>
+                      {project.has_project_password ? (
+                        <Stack direction="row" spacing={0.75} sx={{ alignItems: 'center', color: 'text.secondary' }}>
+                          <LockOutlined sx={{ fontSize: 16 }} />
+                          <Typography variant="caption">Password protected</Typography>
+                        </Stack>
+                      ) : null}
                     </Stack>
 
                     <Button
@@ -354,6 +381,32 @@ export function ProjectsPage() {
           </Box>
         )}
       </Box>
+
+      <Dialog open={passwordDialog.open} onClose={() => setPasswordDialog({ open: false, project: null })} maxWidth="xs" fullWidth>
+        <DialogTitle>Enter Project Password</DialogTitle>
+        <DialogContent>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+            {passwordDialog.project?.name} is protected. Enter the project password to continue.
+          </Typography>
+          <TextField
+            autoFocus
+            fullWidth
+            type="password"
+            label="Project Password"
+            value={accessPassword}
+            onChange={(e) => setAccessPassword(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && submitProjectPassword()}
+            error={Boolean(accessError)}
+            helperText={accessError}
+          />
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2 }}>
+          <Button onClick={() => setPasswordDialog({ open: false, project: null })}>Cancel</Button>
+          <Button variant="contained" onClick={submitProjectPassword} disabled={!accessPassword.trim() || accessLoading}>
+            {accessLoading ? 'Verifying…' : 'Continue'}
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   )
 }

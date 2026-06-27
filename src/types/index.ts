@@ -9,6 +9,8 @@ export interface User {
   email_verified: boolean
   is_staff?: boolean
   is_superuser?: boolean
+  org_role?: string
+  platform_role?: 'super_admin' | 'admin' | 'staff'
   created_at: string
 }
 
@@ -36,6 +38,8 @@ export interface Organization {
   plan_limits: Record<string, number>
   is_active: boolean
   white_label_domain: string
+  has_project_password?: boolean
+  membership_role?: string
   created_at: string
 }
 

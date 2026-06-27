@@ -25,6 +25,7 @@ import { WhatsAppApiGuidePage } from './pages/WhatsAppApiGuidePage'
 import { SmsPage } from './pages/SmsPage'
 import { MessageLogPage } from './pages/MessageLogPage'
 import { SmsDashboardPage } from './pages/SmsDashboardPage'
+import { AccountSettingsPage } from './pages/AccountSettingsPage'
 import { ModulePlaceholderPage } from './pages/ModulePlaceholderPage'
 
 const queryClient = new QueryClient({
@@ -46,6 +47,8 @@ export default function App() {
             <Route path="/projects" element={<ProtectedRoute><ProjectsPage /></ProtectedRoute>} />
             <Route element={<ProtectedRoute><AppShell /></ProtectedRoute>}>
               <Route path="/" element={<Navigate to="/projects" replace />} />
+
+              <Route path="/account" element={<AccountSettingsPage />} />
 
               <Route path="/whatsapp-crm/dashboard" element={<DashboardPage />} />
               <Route path="/whatsapp-crm/inbox" element={<InboxPage />} />

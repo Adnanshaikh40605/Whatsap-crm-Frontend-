@@ -3,7 +3,7 @@ import { Link as RouterLink } from 'react-router-dom'
 import { Box, Button, ListItemButton, Stack, Typography } from '@mui/material'
 import {
   ForumOutlined, CampaignOutlined, DescriptionOutlined, WhatsApp, GroupsOutlined, PermMediaOutlined,
-  MenuBookOutlined,
+  MenuBookOutlined, PersonOutlined, LockOutlined,
 } from '@mui/icons-material'
 import { campaignApi, crmApi } from '../lib/api'
 import { useAuth } from '../context/AuthContext'
@@ -105,6 +105,33 @@ export function DashboardPage() {
           <Button component={RouterLink} to="/whatsapp-crm/contacts" variant="outlined">Import contacts</Button>
           <Button component={RouterLink} to="/whatsapp-crm/campaigns" variant="outlined">Create campaign</Button>
         </Stack>
+      </AppCard>
+
+      <AppCard title="Account Settings" subtitle="Manage your profile and password securely">
+        <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' }, gap: 2 }}>
+          <ListItemButton
+            component={RouterLink}
+            to="/account"
+            sx={{ alignItems: 'flex-start', gap: 1.5, p: 2.5, bgcolor: 'action.hover', borderRadius: 2 }}
+          >
+            <Box sx={{ color: 'primary.main', mt: 0.25 }}><PersonOutlined /></Box>
+            <Box>
+              <Typography variant="body2" sx={{ fontWeight: 700 }}>Edit User Profile</Typography>
+              <Typography variant="caption" color="text.secondary">Update your name, username, and phone</Typography>
+            </Box>
+          </ListItemButton>
+          <ListItemButton
+            component={RouterLink}
+            to="/account"
+            sx={{ alignItems: 'flex-start', gap: 1.5, p: 2.5, bgcolor: 'action.hover', borderRadius: 2 }}
+          >
+            <Box sx={{ color: 'primary.main', mt: 0.25 }}><LockOutlined /></Box>
+            <Box>
+              <Typography variant="body2" sx={{ fontWeight: 700 }}>Change Password</Typography>
+              <Typography variant="caption" color="text.secondary">Update your login password</Typography>
+            </Box>
+          </ListItemButton>
+        </Box>
       </AppCard>
     </Box>
   )

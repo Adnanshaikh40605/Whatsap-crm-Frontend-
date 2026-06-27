@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react'
 import { authApi, orgApi } from '../lib/api'
+import { isStaffUser, staffDefaultPath } from '../lib/rbac'
 import type { Organization, User } from '../types'
 
 interface AuthContextType {
@@ -16,8 +17,11 @@ interface AuthContextType {
     organization_name: string
   }) => Promise<void>
   logout: () => void
-  switchOrganization: (id: string) => Promise<void>
+  switchOrganization: (id: string, projectPassword?: string) => Promise<Organization>
   refreshUser: () => Promise<void>
+  isStaff: boolean
+  isAdmin: boolean
+  isSuperAdmin: boolean
 }
 
 const AuthContext = createContext<AuthContextType | null>(null)
@@ -35,12 +39,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return
     }
     try {
+      const orgId = localStorage.getItem('organization_id')
       const [meRes, orgsRes, currentRes] = await Promise.all([
         authApi.me(),
         orgApi.list(),
-        orgApi.current().catch(() => null),
+        orgId ? orgApi.current().catch(() => null) : Promise.resolve(null),
       ])
-      setUser(meRes.data?.data ?? meRes.data)
+      const meUser = meRes.data?.data ?? meRes.data
+      setUser(meUser)
       const orgPayload = orgsRes.data
       const orgList = orgPayload.results ?? orgPayload.data ?? orgPayload
       setOrganizations(Array.isArray(orgList) ? orgList : [])
@@ -50,6 +56,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       } else if (Array.isArray(orgList) && orgList.length > 0) {
         setOrganization(orgList[0])
         localStorage.setItem('organization_id', orgList[0].id)
+      } else {
+        setOrganization(null)
       }
     } catch {
       localStorage.clear()
@@ -91,18 +99,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const logout = () => {
     localStorage.clear()
+    sessionStorage.clear()
     setUser(null)
     setOrganization(null)
     setOrganizations([])
   }
 
-  const switchOrganization = async (id: string) => {
-    const { data } = await orgApi.switch(id)
+  const switchOrganization = async (id: string, projectPassword?: string) => {
+    localStorage.setItem('organization_id', id)
+    const { data } = await orgApi.switch(id, projectPassword)
     const org = data.data ?? data
     setOrganization(org)
-    setOrganizations((items) => items.map((item) => item.id === org.id ? org : item))
+    setOrganizations((items) => {
+      const exists = items.some((item) => item.id === org.id)
+      return exists ? items.map((item) => (item.id === org.id ? org : item)) : [...items, org]
+    })
     localStorage.setItem('organization_id', org.id)
+    const meRes = await authApi.me()
+    setUser(meRes.data?.data ?? meRes.data)
+    return org
   }
+
+  const isSuperAdmin = Boolean(user?.is_superuser)
+  const isStaff = isStaffUser(user)
+  const isAdmin = Boolean(user && (isSuperAdmin || user.platform_role === 'admin'))
 
   return (
     <AuthContext.Provider
@@ -116,6 +136,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         logout,
         switchOrganization,
         refreshUser: loadSession,
+        isStaff,
+        isAdmin,
+        isSuperAdmin,
       }}
     >
       {children}
@@ -128,3 +151,5 @@ export function useAuth() {
   if (!ctx) throw new Error('useAuth must be used within AuthProvider')
   return ctx
 }
+
+export { staffDefaultPath }
