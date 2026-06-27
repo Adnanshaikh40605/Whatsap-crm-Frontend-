@@ -16,7 +16,7 @@ const STEPS = ['Authorize with Meta', 'Select number', 'Verify business', 'Go li
 export function QRCodePage() {
   const { organization, refreshUser } = useAuth()
   const toast = useToast()
-  const connected = Boolean(organization?.whatsapp_connected)
+  const connected = organization?.whatsapp_api_status === 'live' || Boolean(organization?.whatsapp_connected)
   const [open, setOpen] = useState(false)
   const [waba, setWaba] = useState('')
   const [phoneId, setPhoneId] = useState('')
