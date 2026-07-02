@@ -3,7 +3,7 @@ import { useParams, useNavigate, Link } from 'react-router-dom'
 import { useMutation } from '@tanstack/react-query'
 import {
   Smartphone, Bot, Terminal, Building2, Users, Bell, Shield,
-  Palette, Webhook, ChevronRight, ArrowLeft, MessageCircle, RotateCcw, User,
+  Palette, Webhook, ChevronRight, ArrowLeft, MessageCircle, RotateCcw, User, KeyRound,
 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { orgApi } from '../lib/api'
@@ -13,6 +13,7 @@ import { Input } from '../components/ui/Input'
 import { useToast } from '../components/common'
 import { getApiOrigin, getApiUrl } from '../lib/config'
 import { AccountSettingsPanel } from '../components/settings/AccountSettingsPanel'
+import { ApiKeysPanel } from '../components/settings/ApiKeysPanel'
 
 const API_ORIGIN = getApiOrigin()
 
@@ -50,9 +51,17 @@ const SETTINGS_CATEGORIES = [
     path: '/whatsapp-crm/settings/ai-bot',
   },
   {
+    id: 'api-keys',
+    title: 'API Keys',
+    description: 'Create and manage embed API keys for external CRMs',
+    icon: KeyRound,
+    color: '#0f766e',
+    path: '/whatsapp-crm/settings/api-keys',
+  },
+  {
     id: 'api',
     title: 'API & Webhooks',
-    description: 'API keys, webhook URLs, and event subscriptions',
+    description: 'Webhook URLs and event subscriptions',
     icon: Terminal,
     color: '#f59e0b',
     path: '/whatsapp-crm/settings/api',
@@ -260,7 +269,8 @@ export function SettingsPage() {
     account: { title: 'Account Settings', description: 'Manage your profile and account password securely' },
     whatsapp: { title: 'WhatsApp Connection', description: 'Connect your Meta WhatsApp Business API' },
     'ai-bot': { title: 'AI & Bot Settings', description: 'Configure AI-powered responses and bot behavior' },
-    api: { title: 'API & Webhooks', description: 'Manage API access and webhook integrations' },
+    api: { title: 'API & Webhooks', description: 'Manage webhook integrations' },
+    'api-keys': { title: 'API Keys', description: 'Create and manage embed API keys for external CRM integrations' },
     notifications: { title: 'Notifications', description: 'Configure alert preferences' },
     security: { title: 'Security', description: 'Protect your account and data' },
     appearance: { title: 'Appearance', description: 'Customize the look and feel' },
@@ -289,6 +299,10 @@ export function SettingsPage() {
 
       {section === 'account' ? (
         <AccountSettingsPanel />
+      ) : section === 'api-keys' ? (
+        <div className="surface-card p-5">
+          <ApiKeysPanel />
+        </div>
       ) : (
       <div className="surface-card p-5">
         {section === 'whatsapp' && (
@@ -333,6 +347,19 @@ export function SettingsPage() {
 
         {section === 'api' && (
           <div className="space-y-4">
+            <div className="rounded-xl p-4" style={{ background: 'var(--accent-subtle)' }}>
+              <p className="text-sm font-semibold" style={{ color: 'var(--accent)' }}>Embed API keys</p>
+              <p className="mt-1 text-xs" style={{ color: 'var(--text-secondary)' }}>
+                Create keys for PestControl CRM and other external integrations under API Keys.
+              </p>
+              <button
+                type="button"
+                onClick={() => navigate('/whatsapp-crm/settings/api-keys')}
+                className="mt-3 text-xs font-bold text-brand-600 hover:underline"
+              >
+                Go to API Keys →
+              </button>
+            </div>
             <div className="rounded-xl p-4 font-mono text-xs" style={{ background: '#0f172a', color: '#22c55e' }}>
               <p>API Base: {getApiUrl()}</p>
               <p className="mt-1 text-slate-400">Authorization: Bearer {'<token>'}</p>

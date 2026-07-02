@@ -239,8 +239,12 @@ export const adminApi = {
 
 export const platformApi = {
   apiKeys: () => api.get('/platform/keys/'),
-  createApiKey: (name: string, scopes?: string[]) =>
-    api.post('/platform/keys/', { name, scopes }),
+  createApiKey: (data: { name: string; scopes?: string[]; expiry?: string }) =>
+    api.post('/platform/keys/', data),
+  updateApiKey: (id: string, data: { name?: string; is_active?: boolean }) =>
+    api.patch(`/platform/keys/${id}/`, data),
+  deleteApiKey: (id: string) => api.delete(`/platform/keys/${id}/`),
+  regenerateApiKey: (id: string) => api.post(`/platform/keys/${id}/regenerate/`),
   webhooks: () => api.get('/platform/webhooks/'),
   createWebhook: (data: { url: string; events: string[] }) =>
     api.post('/platform/webhooks/', data),
