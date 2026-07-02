@@ -1,17 +1,22 @@
 import { useQuery } from '@tanstack/react-query'
 import { Link as RouterLink } from 'react-router-dom'
-import { Box, Button, ListItemButton, Stack, Typography } from '@mui/material'
+import { Box, Button, ListItemButton, Stack, Typography, Avatar } from '@mui/material'
 import {
   ForumOutlined, CampaignOutlined, DescriptionOutlined, WhatsApp, GroupsOutlined, PermMediaOutlined,
-  MenuBookOutlined, PersonOutlined, LockOutlined,
+  MenuBookOutlined, PersonOutlined, LockOutlined, StoreOutlined, VerifiedUserOutlined,
 } from '@mui/icons-material'
-import { campaignApi, crmApi } from '../lib/api'
+import { campaignApi, crmApi, whatsappCrmApi } from '../lib/api'
 import { useAuth } from '../context/AuthContext'
 import { PageHeader, StatCard, AppCard } from '../components/common'
-import { formatNumber } from '../lib/utils'
+import { formatDate, formatNumber } from '../lib/utils'
 
 export function DashboardPage() {
   const { organization } = useAuth()
+  const apiStatus = organization?.whatsapp_api_status || (organization?.whatsapp_connected ? 'live' : 'not_connected')
+  const isLive = apiStatus === 'live'
+  const isPending = apiStatus === 'pending'
+  const statusLabel = isLive ? 'LIVE' : isPending ? 'PENDING' : 'NOT CONNECTED'
+  const statusColor = isLive ? 'success.main' : isPending ? 'warning.main' : 'text.secondary'
 
   const { data: campaigns } = useQuery({
     queryKey: ['campaigns'],
@@ -25,15 +30,33 @@ export function DashboardPage() {
     queryKey: ['contacts'],
     queryFn: () => crmApi.contacts().then((r) => r.data.results ?? r.data.data ?? r.data),
   })
+  const { data: businessProfileData } = useQuery({
+    queryKey: ['business-profile'],
+    queryFn: () => whatsappCrmApi.getBusinessProfile().then((r) => r.data.data ?? r.data),
+    enabled: isLive,
+    retry: false,
+  })
 
   const campaignList = (campaigns as unknown[]) ?? []
   const templateList = (templates as unknown[]) ?? []
   const contactList = (contacts as unknown[]) ?? []
-  const apiStatus = organization?.whatsapp_api_status || (organization?.whatsapp_connected ? 'live' : 'not_connected')
-  const isLive = apiStatus === 'live'
-  const isPending = apiStatus === 'pending'
-  const statusLabel = isLive ? 'LIVE' : isPending ? 'PENDING' : 'NOT CONNECTED'
-  const statusColor = isLive ? 'success.main' : isPending ? 'warning.main' : 'text.secondary'
+  const businessProfile = businessProfileData?.profile as {
+    business_name?: string
+    phone_number?: string
+    vertical_label?: string
+    quality_rating?: string
+    profile_picture_url?: string
+    code_verification_status?: string
+    last_synced_at?: string
+  } | undefined
+
+  const qualityText = (() => {
+    const q = String(businessProfile?.quality_rating || '').toUpperCase()
+    if (q === 'GREEN' || q === 'HIGH') return 'High'
+    if (q === 'YELLOW' || q === 'MEDIUM') return 'Medium'
+    if (q === 'RED' || q === 'LOW') return 'Low'
+    return 'Unknown'
+  })()
 
   return (
     <Box sx={{ maxWidth: 1400, mx: 'auto' }}>
@@ -67,6 +90,37 @@ export function DashboardPage() {
           </Stack>
         </Stack>
       </AppCard>
+
+      {isLive && businessProfile && (
+        <AppCard title="Business Profile" subtitle="Your WhatsApp Business identity on Meta" sx={{ mb: 3 }}>
+          <Stack direction={{ xs: 'column', md: 'row' }} spacing={3} sx={{ alignItems: { md: 'center' }, justifyContent: 'space-between' }}>
+            <Stack direction="row" spacing={2} sx={{ alignItems: 'center' }}>
+              <Avatar src={businessProfile.profile_picture_url || undefined} sx={{ width: 56, height: 56, bgcolor: 'primary.light' }}>
+                <StoreOutlined />
+              </Avatar>
+              <Box>
+                <Typography variant="h6" sx={{ fontWeight: 700 }}>{businessProfile.business_name || organization?.name}</Typography>
+                <Typography variant="body2" color="text.secondary">{businessProfile.phone_number || '—'}</Typography>
+                <Stack direction="row" spacing={1} sx={{ mt: 0.5, alignItems: 'center' }}>
+                  <VerifiedUserOutlined fontSize="small" color="success" />
+                  <Typography variant="caption" color="success.main">
+                    {businessProfile.code_verification_status === 'VERIFIED' ? 'Business Verified' : 'Profile Live'}
+                  </Typography>
+                </Stack>
+              </Box>
+            </Stack>
+            <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr 1fr', sm: 'repeat(4, auto)' }, gap: 2 }}>
+              <Box><Typography variant="caption" color="text.secondary">Category</Typography><Typography variant="body2" sx={{ fontWeight: 600 }}>{businessProfile.vertical_label || '—'}</Typography></Box>
+              <Box><Typography variant="caption" color="text.secondary">Quality</Typography><Typography variant="body2" sx={{ fontWeight: 600 }}>{qualityText}</Typography></Box>
+              <Box><Typography variant="caption" color="text.secondary">Status</Typography><Typography variant="body2" sx={{ fontWeight: 600 }}>Live</Typography></Box>
+              <Box><Typography variant="caption" color="text.secondary">Last Synced</Typography><Typography variant="body2" sx={{ fontWeight: 600 }}>{businessProfile.last_synced_at ? formatDate(businessProfile.last_synced_at) : '—'}</Typography></Box>
+            </Box>
+            <Button component={RouterLink} to="/whatsapp-crm/business-profile" variant="outlined">
+              Edit Profile
+            </Button>
+          </Stack>
+        </AppCard>
+      )}
 
       {/* KPI Row */}
       <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr', xl: 'repeat(4,1fr)' }, gap: 2, mb: 3 }}>
@@ -111,7 +165,7 @@ export function DashboardPage() {
         <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' }, gap: 2 }}>
           <ListItemButton
             component={RouterLink}
-            to="/account"
+            to="/whatsapp-crm/settings/account"
             sx={{ alignItems: 'flex-start', gap: 1.5, p: 2.5, bgcolor: 'action.hover', borderRadius: 2 }}
           >
             <Box sx={{ color: 'primary.main', mt: 0.25 }}><PersonOutlined /></Box>
@@ -122,7 +176,7 @@ export function DashboardPage() {
           </ListItemButton>
           <ListItemButton
             component={RouterLink}
-            to="/account"
+            to="/whatsapp-crm/settings/account"
             sx={{ alignItems: 'flex-start', gap: 1.5, p: 2.5, bgcolor: 'action.hover', borderRadius: 2 }}
           >
             <Box sx={{ color: 'primary.main', mt: 0.25 }}><LockOutlined /></Box>

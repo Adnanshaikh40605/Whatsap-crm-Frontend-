@@ -1,480 +1,578 @@
-import { useMemo, useState } from 'react'
+import { Fragment, useEffect, useMemo, useRef, useState } from 'react'
+import { Link, useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { useSearchParams } from 'react-router-dom'
-import { CheckCircle2, ExternalLink, FileText, Image, Megaphone, Plus, RefreshCw, Send, Shield, Trash2, X } from 'lucide-react'
+import {
+  Copy, ExternalLink, Eye, FileText, Image, Megaphone, MoreVertical,
+  Plus, RefreshCw, Search, Send, Shield, Trash2,
+} from 'lucide-react'
 import { campaignApi } from '../lib/api'
-import { PageHeader, DataTable, StatusBadge, Tabs } from '../components/ui/PageLayout'
+import { PageHeader } from '../components/ui/PageLayout'
 import { Button } from '../components/ui/Button'
-import { formatDate } from '../lib/utils'
+import { formatDate, formatMessageTime } from '../lib/utils'
+import { useDeleteConfirm } from '../hooks/useDeleteConfirm'
+import { useToast } from '../components/common'
+import {
+  TemplateCategoryBadge, TemplateQualityBadge, TemplateStatusBadge,
+} from '../components/templates/TemplateBadges'
+import {
+  type CategoryFilter,
+  type StatusFilter,
+  computeTemplateStats,
+  exportTemplatesJson,
+  getLatestSyncTime,
+  groupTemplatesByStatus,
+  matchesFilters,
+  matchesSearch,
+  sortTemplates,
+} from '../lib/templateList'
 import type { WhatsAppTemplate } from '../types/bot'
 
-const templateTabs = [
-  { id: 'all', label: 'All Templates' },
-  { id: 'marketing', label: 'Marketing' },
-  { id: 'utility', label: 'Utility' },
-  { id: 'authentication', label: 'OTP / Auth' },
-  { id: 'media', label: 'Media / Carousel' },
+const META_URL = 'https://business.facebook.com/wa/manage/message-templates/'
+const STATUS_FILTERS: { id: StatusFilter; label: string }[] = [
+  { id: 'all', label: 'All' },
+  { id: 'approved', label: 'Approved' },
+  { id: 'pending', label: 'Pending' },
+  { id: 'rejected', label: 'Rejected' },
+  { id: 'disabled', label: 'Disabled' },
 ]
+const CATEGORY_FILTERS: { id: CategoryFilter; label: string }[] = [
+  { id: 'authentication', label: 'Authentication' },
+  { id: 'utility', label: 'Utility' },
+  { id: 'marketing', label: 'Marketing' },
+  { id: 'media', label: 'Media' },
+]
+const PAGE_SIZES = [25, 50, 100] as const
 
-interface MediaAsset {
-  id: string
-  name: string
-  asset_type: string
+function FilterChip({
+  label, active, onClick,
+}: { label: string; active: boolean; onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="rounded-full border px-3 py-1.5 text-xs font-bold transition-colors"
+      style={{
+        borderColor: active ? 'var(--text-primary)' : 'var(--border)',
+        background: active ? 'var(--text-primary)' : 'var(--bg-card)',
+        color: active ? 'var(--bg-card)' : 'var(--text-primary)',
+      }}
+    >
+      {label}
+    </button>
+  )
 }
 
-interface TemplateForm {
-  name: string
-  category: 'marketing' | 'utility' | 'authentication'
-  template_type: string
-  language: string
-  header_type: 'none' | 'text' | 'image' | 'video' | 'document'
-  header_text: string
-  body: string
-  footer: string
-  variables: string
-  button_type: 'none' | 'quick_reply' | 'url' | 'phone_number'
-  button_text: string
-  button_value: string
-  media_asset: string
-  submit_to_meta: boolean
-}
+function RowActionsMenu({
+  template,
+  onView,
+  onDuplicate,
+  onRefresh,
+  onDelete,
+  refreshing,
+}: {
+  template: WhatsAppTemplate
+  onView: () => void
+  onDuplicate: () => void
+  onRefresh: () => void
+  onDelete: () => void
+  refreshing: boolean
+}) {
+  const [open, setOpen] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
 
-const initialForm: TemplateForm = {
-  name: '',
-  category: 'utility',
-  template_type: 'standard',
-  language: 'en_US',
-  header_type: 'none',
-  header_text: '',
-  body: '',
-  footer: '',
-  variables: '',
-  button_type: 'none',
-  button_text: '',
-  button_value: '',
-  media_asset: '',
-  submit_to_meta: false,
-}
-
-function isMediaTemplate(t: WhatsAppTemplate) {
-  const header = t.header as { type?: string; format?: string } | undefined
-  const format = String(header?.format || header?.type || '').toUpperCase()
-  return ['IMAGE', 'VIDEO', 'DOCUMENT', 'CAROUSEL'].includes(format) || t.template_type === 'carousel' || Boolean(t.media_asset)
-}
-
-function renderTemplateStatus(template: WhatsAppTemplate) {
-  if (template.status === 'approved' && !template.quality_rating) {
-    return (
-      <span className="inline-flex items-center rounded-[100px] bg-[#eaf7ee] px-2.5 py-1 text-xs font-bold text-[#31a24c]">
-        Approved · quality pending
-      </span>
-    )
-  }
-  return <StatusBadge status={template.status} />
-}
-
-function normalizeTemplateName(value: string) {
-  return value.toLowerCase().trim().replace(/[^a-z0-9_]+/g, '_').replace(/^_+|_+$/g, '')
-}
-
-function buildTemplatePayload(form: TemplateForm) {
-  const variables = form.variables.split(',').map((item) => item.trim()).filter(Boolean)
-  const headerFormat = form.header_type.toUpperCase()
-  const header = form.header_type === 'none'
-    ? {}
-    : form.header_type === 'text'
-      ? { type: 'HEADER', format: 'TEXT', text: form.header_text }
-      : { type: 'HEADER', format: headerFormat }
-
-  const buttons = form.button_type === 'none' || !form.button_text ? [] : [{
-    type: form.button_type.toUpperCase(),
-    text: form.button_text,
-    ...(form.button_type === 'url' ? { url: form.button_value } : {}),
-    ...(form.button_type === 'phone_number' ? { phone_number: form.button_value } : {}),
-  }]
-
-  const components: Record<string, unknown>[] = []
-  if (Object.keys(header).length) components.push(header)
-
-  const body: Record<string, unknown> = { type: 'BODY', text: form.body }
-  if (variables.length) {
-    body.example = { body_text: [variables] }
-  }
-  components.push(body)
-
-  if (form.footer) components.push({ type: 'FOOTER', text: form.footer })
-  if (buttons.length) components.push({ type: 'BUTTONS', buttons })
-
-  return {
-    name: normalizeTemplateName(form.name),
-    category: form.category,
-    template_type: form.template_type,
-    language: form.language,
-    header,
-    body: form.body,
-    footer: form.footer,
-    buttons,
-    variables,
-    components,
-    media_asset: form.media_asset || null,
-    submit_to_meta: form.submit_to_meta,
-  }
-}
-
-function TemplateModal({ open, onClose }: { open: boolean; onClose: () => void }) {
-  const queryClient = useQueryClient()
-  const [form, setForm] = useState<TemplateForm>(initialForm)
-
-  const { data: mediaData } = useQuery({
-    queryKey: ['media-assets'],
-    queryFn: () => campaignApi.media().then((r) => r.data.results ?? r.data.data ?? r.data),
-    enabled: open,
-  })
-
-  const media = (mediaData as MediaAsset[]) ?? []
-
-  const createTemplate = useMutation({
-    mutationFn: () => campaignApi.createTemplate(buildTemplatePayload(form)),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['templates'] })
-      setForm(initialForm)
-      onClose()
-    },
-  })
-
-  if (!open) return null
+  useEffect(() => {
+    const close = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
+    }
+    document.addEventListener('mousedown', close)
+    return () => document.removeEventListener('mousedown', close)
+  }, [])
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-      <div className="max-h-[92vh] w-full max-w-3xl overflow-y-auto rounded-[24px] border shadow-2xl" style={{ background: 'var(--bg-card)', borderColor: 'var(--border-subtle)' }}>
-        <div className="flex items-center justify-between border-b px-6 py-4" style={{ borderColor: 'var(--border)' }}>
-          <div>
-            <h2 className="font-bold" style={{ color: 'var(--text-primary)' }}>Create WhatsApp Template</h2>
-            <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Use lowercase names with underscores for Meta approval.</p>
-          </div>
-          <button onClick={onClose} className="rounded-lg p-1 hover:bg-[var(--hover)]"><X className="h-5 w-5" /></button>
+    <div ref={ref} className="relative" onClick={(e) => e.stopPropagation()}>
+      <button
+        type="button"
+        className="flex h-8 w-8 items-center justify-center rounded-lg border hover:bg-[var(--hover)]"
+        style={{ borderColor: 'var(--border)' }}
+        onClick={() => setOpen((v) => !v)}
+        aria-label="Actions"
+      >
+        <MoreVertical className="h-4 w-4" />
+      </button>
+      {open && (
+        <div
+          className="absolute right-0 z-20 mt-1 min-w-[180px] rounded-xl border py-1 shadow-lg"
+          style={{ borderColor: 'var(--border)', background: 'var(--bg-card)' }}
+        >
+          {[
+            { icon: Eye, label: 'View', action: onView },
+            ...(template.status === 'draft' ? [{ icon: Send, label: 'Submit', action: () => {} }] : []),
+            { icon: Copy, label: 'Duplicate', action: onDuplicate },
+            { icon: RefreshCw, label: refreshing ? 'Refreshing…' : 'Refresh', action: onRefresh },
+            { icon: ExternalLink, label: 'Open in Meta', action: () => window.open(META_URL, '_blank') },
+            { icon: Trash2, label: 'Delete', action: onDelete, danger: true },
+          ].map(({ icon: Icon, label, action, danger }) => (
+            <button
+              key={label}
+              type="button"
+              className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-[var(--hover)]"
+              style={{ color: danger ? 'var(--critical)' : 'var(--text-primary)' }}
+              onClick={() => { setOpen(false); action() }}
+            >
+              <Icon className="h-3.5 w-3.5" /> {label}
+            </button>
+          ))}
         </div>
+      )}
+    </div>
+  )
+}
 
-        <div className="grid gap-4 px-6 py-5">
-          <div className="grid gap-3 md:grid-cols-3">
-            <label className="space-y-1.5 text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
-              Template name
-              <input
-                value={form.name}
-                onChange={(event) => setForm({ ...form, name: event.target.value })}
-                placeholder="order_update_001"
-                className="h-11 w-full rounded-lg border px-3 py-2 text-sm focus:border-[#1876f2] focus:outline-none"
-                style={{ background: 'var(--bg)', borderColor: 'var(--border)' }}
-              />
-            </label>
-            <label className="space-y-1.5 text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
-              Category
-              <select
-                value={form.category}
-                onChange={(event) => setForm({ ...form, category: event.target.value as TemplateForm['category'] })}
-                className="h-11 w-full rounded-lg border px-3 py-2 text-sm focus:border-[#1876f2] focus:outline-none"
-                style={{ background: 'var(--bg)', borderColor: 'var(--border)' }}
-              >
-                <option value="utility">Utility</option>
-                <option value="marketing">Marketing</option>
-                <option value="authentication">Authentication / OTP</option>
-              </select>
-            </label>
-            <label className="space-y-1.5 text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
-              Language
-              <input
-                value={form.language}
-                onChange={(event) => setForm({ ...form, language: event.target.value })}
-                className="h-11 w-full rounded-lg border px-3 py-2 text-sm focus:border-[#1876f2] focus:outline-none"
-                style={{ background: 'var(--bg)', borderColor: 'var(--border)' }}
-              />
-            </label>
-          </div>
+function TemplateRow({
+  template, selected, onSelect, onOpen, onRefresh, onDelete, refreshing,
+}: {
+  template: WhatsAppTemplate
+  selected: boolean
+  onSelect: (checked: boolean) => void
+  onOpen: () => void
+  onRefresh: () => void
+  onDelete: () => void
+  refreshing: boolean
+}) {
+  const navigate = useNavigate()
+  return (
+    <tr
+      className="cursor-pointer border-b transition-colors hover:bg-[var(--hover)]"
+      style={{ borderColor: 'var(--border-subtle)' }}
+      onClick={onOpen}
+    >
+      <td className="px-3 py-3" onClick={(e) => e.stopPropagation()}>
+        <input type="checkbox" checked={selected} onChange={(e) => onSelect(e.target.checked)} />
+      </td>
+      <td className="px-3 py-3"><TemplateStatusBadge template={template} /></td>
+      <td className="px-3 py-3 font-semibold" style={{ color: 'var(--text-primary)' }}>{template.name}</td>
+      <td className="px-3 py-3"><TemplateCategoryBadge category={template.category} /></td>
+      <td className="px-3 py-3 text-xs font-mono">{template.language}</td>
+      <td className="px-3 py-3"><TemplateQualityBadge rating={template.quality_rating} /></td>
+      <td className="px-3 py-3 text-xs" style={{ color: 'var(--text-muted)' }}>{formatDate(template.created_at)}</td>
+      <td className="px-3 py-3 text-xs" style={{ color: 'var(--text-muted)' }}>{formatDate(template.updated_at)}</td>
+      <td className="px-3 py-3 font-mono text-[11px]" style={{ color: 'var(--text-muted)' }}>
+        {template.whatsapp_template_id || '—'}
+      </td>
+      <td className="px-3 py-3" onClick={(e) => e.stopPropagation()}>
+        <RowActionsMenu
+          template={template}
+          onView={onOpen}
+          onDuplicate={() => navigate(`/whatsapp-crm/templates/new?duplicate=${template.id}`)}
+          onRefresh={onRefresh}
+          onDelete={onDelete}
+          refreshing={refreshing}
+        />
+      </td>
+    </tr>
+  )
+}
 
-          <div className="grid gap-3 md:grid-cols-3">
-            <label className="space-y-1.5 text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
-              Template type
-              <select
-                value={form.template_type}
-                onChange={(event) => setForm({ ...form, template_type: event.target.value })}
-                className="h-11 w-full rounded-lg border px-3 py-2 text-sm focus:border-[#1876f2] focus:outline-none"
-                style={{ background: 'var(--bg)', borderColor: 'var(--border)' }}
-              >
-                <option value="standard">Standard</option>
-                <option value="authentication_otp">Authentication OTP</option>
-                <option value="image">Image header</option>
-                <option value="video">Video header</option>
-                <option value="document">Document header</option>
-                <option value="carousel">Carousel</option>
-              </select>
-            </label>
-            <label className="space-y-1.5 text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
-              Header
-              <select
-                value={form.header_type}
-                onChange={(event) => setForm({ ...form, header_type: event.target.value as TemplateForm['header_type'] })}
-                className="h-11 w-full rounded-lg border px-3 py-2 text-sm focus:border-[#1876f2] focus:outline-none"
-                style={{ background: 'var(--bg)', borderColor: 'var(--border)' }}
-              >
-                <option value="none">No header</option>
-                <option value="text">Text</option>
-                <option value="image">Image</option>
-                <option value="video">Video</option>
-                <option value="document">Document</option>
-              </select>
-            </label>
-            <label className="space-y-1.5 text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
-              Media
-              <select
-                value={form.media_asset}
-                onChange={(event) => setForm({ ...form, media_asset: event.target.value })}
-                className="h-11 w-full rounded-lg border px-3 py-2 text-sm focus:border-[#1876f2] focus:outline-none"
-                style={{ background: 'var(--bg)', borderColor: 'var(--border)' }}
-              >
-                <option value="">No media asset</option>
-                {media.map((asset) => (
-                  <option key={asset.id} value={asset.id}>{asset.name} ({asset.asset_type})</option>
-                ))}
-              </select>
-            </label>
-          </div>
-
-          {form.header_type === 'text' && (
-            <label className="space-y-1.5 text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
-              Header text
-              <input
-                value={form.header_text}
-                onChange={(event) => setForm({ ...form, header_text: event.target.value })}
-                placeholder="Order update"
-                className="h-11 w-full rounded-lg border px-3 py-2 text-sm focus:border-[#1876f2] focus:outline-none"
-                style={{ background: 'var(--bg)', borderColor: 'var(--border)' }}
-              />
-            </label>
-          )}
-
-          <label className="space-y-1.5 text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
-            Body
-            <textarea
-              value={form.body}
-              onChange={(event) => setForm({ ...form, body: event.target.value })}
-              placeholder="Hi {{1}}, your order {{2}} is confirmed."
-              rows={5}
-              className="w-full rounded-lg border px-3 py-2 text-sm focus:border-[#1876f2] focus:outline-none"
-              style={{ background: 'var(--bg)', borderColor: 'var(--border)' }}
-            />
-          </label>
-
-          <div className="grid gap-3 md:grid-cols-2">
-            <label className="space-y-1.5 text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
-              Variable examples
-              <input
-                value={form.variables}
-                onChange={(event) => setForm({ ...form, variables: event.target.value })}
-                placeholder="Adnan, ORD123"
-                className="h-11 w-full rounded-lg border px-3 py-2 text-sm focus:border-[#1876f2] focus:outline-none"
-                style={{ background: 'var(--bg)', borderColor: 'var(--border)' }}
-              />
-            </label>
-            <label className="space-y-1.5 text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
-              Footer
-              <input
-                value={form.footer}
-                onChange={(event) => setForm({ ...form, footer: event.target.value })}
-                placeholder="Reply STOP to opt out"
-                className="h-11 w-full rounded-lg border px-3 py-2 text-sm focus:border-[#1876f2] focus:outline-none"
-                style={{ background: 'var(--bg)', borderColor: 'var(--border)' }}
-              />
-            </label>
-          </div>
-
-          <div className="grid gap-3 md:grid-cols-3">
-            <label className="space-y-1.5 text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
-              Button type
-              <select
-                value={form.button_type}
-                onChange={(event) => setForm({ ...form, button_type: event.target.value as TemplateForm['button_type'] })}
-                className="h-11 w-full rounded-lg border px-3 py-2 text-sm focus:border-[#1876f2] focus:outline-none"
-                style={{ background: 'var(--bg)', borderColor: 'var(--border)' }}
-              >
-                <option value="none">No button</option>
-                <option value="quick_reply">Quick reply</option>
-                <option value="url">Website URL</option>
-                <option value="phone_number">Phone number</option>
-              </select>
-            </label>
-            <label className="space-y-1.5 text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
-              Button text
-              <input
-                value={form.button_text}
-                onChange={(event) => setForm({ ...form, button_text: event.target.value })}
-                placeholder="View details"
-                className="h-11 w-full rounded-lg border px-3 py-2 text-sm focus:border-[#1876f2] focus:outline-none"
-                style={{ background: 'var(--bg)', borderColor: 'var(--border)' }}
-              />
-            </label>
-            <label className="space-y-1.5 text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
-              Button value
-              <input
-                value={form.button_value}
-                onChange={(event) => setForm({ ...form, button_value: event.target.value })}
-                placeholder="https://example.com or +919..."
-                disabled={form.button_type === 'none' || form.button_type === 'quick_reply'}
-                className="h-11 w-full rounded-lg border px-3 py-2 text-sm disabled:opacity-50 focus:border-[#1876f2] focus:outline-none"
-                style={{ background: 'var(--bg)', borderColor: 'var(--border)' }}
-              />
-            </label>
-          </div>
-
-          <label className="flex items-center gap-2 text-sm" style={{ color: 'var(--text-primary)' }}>
-            <input
-              type="checkbox"
-              checked={form.submit_to_meta}
-              onChange={(event) => setForm({ ...form, submit_to_meta: event.target.checked })}
-            />
-            Submit to Meta immediately
-          </label>
+function TemplateMobileCard({
+  template, selected, onSelect, onOpen, onDelete,
+}: {
+  template: WhatsAppTemplate
+  selected: boolean
+  onSelect: (checked: boolean) => void
+  onOpen: () => void
+  onDelete: () => void
+}) {
+  return (
+    <div
+      className="surface-card cursor-pointer p-4"
+      onClick={onOpen}
+      role="button"
+      tabIndex={0}
+      onKeyDown={(e) => e.key === 'Enter' && onOpen()}
+    >
+      <div className="flex items-start justify-between gap-2">
+        <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+          <input type="checkbox" checked={selected} onChange={(e) => onSelect(e.target.checked)} />
+          <TemplateStatusBadge template={template} />
         </div>
-
-        <div className="flex justify-end gap-2 border-t px-6 py-4" style={{ borderColor: 'var(--border)' }}>
-          <Button variant="ghost" onClick={onClose}>Cancel</Button>
-          <Button
-            loading={createTemplate.isPending}
-            disabled={!form.name || !form.body}
-            onClick={() => createTemplate.mutate()}
-          >
-            {form.submit_to_meta ? 'Create and submit' : 'Create template'}
-          </Button>
-        </div>
+        <TemplateQualityBadge rating={template.quality_rating} />
+      </div>
+      <h3 className="mt-2 font-bold" style={{ color: 'var(--text-primary)' }}>{template.name}</h3>
+      <div className="mt-1 flex flex-wrap gap-2">
+        <TemplateCategoryBadge category={template.category} />
+        <span className="text-xs font-mono" style={{ color: 'var(--text-muted)' }}>{template.language}</span>
+      </div>
+      <p className="mt-2 text-xs" style={{ color: 'var(--text-muted)' }}>
+        Updated {formatDate(template.updated_at)}
+      </p>
+      <div className="mt-3 flex gap-2" onClick={(e) => e.stopPropagation()}>
+        <Button size="sm" variant="secondary" onClick={onOpen}>View</Button>
+        <Button size="sm" variant="danger" onClick={onDelete}><Trash2 className="h-3 w-3" /></Button>
       </div>
     </div>
   )
 }
 
 export function TemplatesPage() {
+  const navigate = useNavigate()
   const queryClient = useQueryClient()
-  const [searchParams] = useSearchParams()
+  const toast = useToast()
   const [search, setSearch] = useState('')
-  const [tab, setTab] = useState(searchParams.get('type') || 'all')
-  const [createOpen, setCreateOpen] = useState(false)
+  const [statusFilters, setStatusFilters] = useState<Set<StatusFilter>>(new Set(['all']))
+  const [categoryFilters, setCategoryFilters] = useState<Set<CategoryFilter>>(new Set())
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
+  const [page, setPage] = useState(1)
+  const [pageSize, setPageSize] = useState<(typeof PAGE_SIZES)[number]>(25)
+  const [lastSyncLabel, setLastSyncLabel] = useState<string | null>(null)
+  const { requestDelete, deleteDialog } = useDeleteConfirm()
 
   const { data, isLoading } = useQuery({
     queryKey: ['templates'],
     queryFn: () => campaignApi.templates().then((r) => r.data.results ?? r.data.data ?? r.data),
+    refetchInterval: (query) => {
+      const templates = (query.state.data as WhatsAppTemplate[] | undefined) ?? []
+      const hasPending = templates.some((t) => t.status === 'pending')
+      return hasPending ? 45000 : false
+    },
   })
+
+  const allTemplates = (data as WhatsAppTemplate[]) ?? []
+  const stats = useMemo(() => computeTemplateStats(allTemplates), [allTemplates])
+
+  const filtered = useMemo(() => {
+    const searched = allTemplates.filter((t) => matchesSearch(t, search))
+    const matched = searched.filter((t) => matchesFilters(t, statusFilters, categoryFilters))
+    return sortTemplates(matched)
+  }, [allTemplates, search, statusFilters, categoryFilters])
+
+  const grouped = useMemo(() => groupTemplatesByStatus(filtered), [filtered])
+  const flatForPagination = useMemo(() => grouped.flatMap((g) => g.items), [grouped])
+
+  const totalPages = Math.max(1, Math.ceil(flatForPagination.length / pageSize))
+  const currentPage = Math.min(page, totalPages)
+  const pageItems = flatForPagination.slice((currentPage - 1) * pageSize, currentPage * pageSize)
+  const pageItemIdSet = useMemo(() => new Set(pageItems.map((t) => t.id)), [pageItems])
+  const pageGroups = useMemo(() => {
+    return grouped
+      .map((group) => ({ ...group, items: group.items.filter((t) => pageItemIdSet.has(t.id)) }))
+      .filter((g) => g.items.length > 0)
+  }, [grouped, pageItemIdSet])
+
+  useEffect(() => {
+    const latest = getLatestSyncTime(allTemplates)
+    if (latest) setLastSyncLabel(formatMessageTime(latest))
+  }, [allTemplates])
 
   const syncMutation = useMutation({
     mutationFn: () => campaignApi.syncTemplates(),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['templates'] }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['templates'] })
+      setLastSyncLabel(formatMessageTime(new Date().toISOString()))
+      toast.success('Templates synced from Meta')
+    },
+    onError: () => toast.error('Sync failed'),
   })
-  const submitMutation = useMutation({
-    mutationFn: (id: string) => campaignApi.submitTemplate(id),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['templates'] }),
-  })
+
   const refreshMutation = useMutation({
     mutationFn: (id: string) => campaignApi.refreshTemplate(id),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['templates'] }),
   })
+
   const deleteMutation = useMutation({
     mutationFn: (id: string) => campaignApi.deleteTemplate(id),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['templates'] }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['templates'] })
+      setSelectedIds(new Set())
+    },
   })
 
-  const allTemplates = (data as WhatsAppTemplate[]) ?? []
-
-  const templates = useMemo(() => allTemplates.filter((template) => {
-    const matchesSearch = !search || `${template.name} ${template.body}`.toLowerCase().includes(search.toLowerCase())
-    if (!matchesSearch) return false
-    if (tab === 'all') return true
-    if (tab === 'media') return isMediaTemplate(template)
-    return template.category === tab
-  }), [allTemplates, search, tab])
-
-  const counts = {
-    all: allTemplates.length,
-    marketing: allTemplates.filter((t) => t.category === 'marketing').length,
-    utility: allTemplates.filter((t) => t.category === 'utility').length,
-    authentication: allTemplates.filter((t) => t.category === 'authentication').length,
-    media: allTemplates.filter(isMediaTemplate).length,
+  const toggleStatusFilter = (id: StatusFilter) => {
+    setPage(1)
+    setStatusFilters((prev) => {
+      if (id === 'all') return new Set(['all'])
+      const next = new Set(prev)
+      next.delete('all')
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      if (next.size === 0) next.add('all')
+      return next
+    })
   }
+
+  const toggleCategoryFilter = (id: CategoryFilter) => {
+    setPage(1)
+    setCategoryFilters((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
+
+  const toggleSelect = (id: string, checked: boolean) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev)
+      if (checked) next.add(id)
+      else next.delete(id)
+      return next
+    })
+  }
+
+  const toggleSelectAll = (checked: boolean) => {
+    if (checked) setSelectedIds(new Set(pageItems.map((t) => t.id)))
+    else setSelectedIds(new Set())
+  }
+
+  const handleBulkRefresh = async () => {
+    for (const id of selectedIds) {
+      await refreshMutation.mutateAsync(id)
+    }
+    toast.success(`Refreshed ${selectedIds.size} template(s)`)
+  }
+
+  const handleBulkDelete = () => {
+    const names = allTemplates.filter((t) => selectedIds.has(t.id)).map((t) => t.name).join(', ')
+    requestDelete({
+      itemName: names.slice(0, 80) + (names.length > 80 ? '…' : ''),
+      itemType: 'WhatsApp templates',
+      associatedDataMessage: `This will permanently delete ${selectedIds.size} selected template(s).`,
+      onConfirm: async () => {
+        for (const id of selectedIds) {
+          await deleteMutation.mutateAsync(id)
+        }
+      },
+    })
+  }
+
+  const openTemplate = (id: string) => navigate(`/whatsapp-crm/templates/${id}`)
+
+  const statCards = [
+    { label: 'Total', value: stats.total, icon: FileText, color: 'text-slate-700 bg-slate-100' },
+    { label: 'Marketing', value: stats.marketing, icon: Megaphone, color: 'text-[#0064e0] bg-blue-50' },
+    { label: 'Utility', value: stats.utility, icon: FileText, color: 'text-slate-700 bg-slate-100' },
+    { label: 'Authentication', value: stats.authentication, icon: Shield, color: 'text-purple-700 bg-purple-50' },
+    { label: 'Media', value: stats.media, icon: Image, color: 'text-[#1876f2] bg-blue-50' },
+    { label: 'Approved', value: stats.approved, icon: FileText, color: 'text-green-700 bg-green-50' },
+    { label: 'Pending', value: stats.pending, icon: FileText, color: 'text-amber-700 bg-amber-50' },
+    { label: 'Rejected', value: stats.rejected, icon: FileText, color: 'text-red-700 bg-red-50' },
+  ]
 
   return (
     <div>
       <PageHeader
         title="WhatsApp Templates"
-        subtitle="Create Meta templates for OTP, Utility, Marketing, Carousel, Image, Video, and Document messages"
+        subtitle="Manage Meta-approved message templates — organized by status, category, and quality"
         actions={
-          <>
-            <Button onClick={() => setCreateOpen(true)}><Plus className="h-4 w-4" /> Create Template</Button>
+          <div className="flex flex-wrap items-center gap-2">
+            {lastSyncLabel && (
+              <span className="text-xs font-medium" style={{ color: 'var(--text-muted)' }}>
+                Last synced {lastSyncLabel}
+              </span>
+            )}
+            <Link to="/whatsapp-crm/templates/new">
+              <Button><Plus className="h-4 w-4" /> Create Template</Button>
+            </Link>
             <Button variant="dark" loading={syncMutation.isPending} onClick={() => syncMutation.mutate()}>
               <RefreshCw className="h-4 w-4" /> Sync from Meta
             </Button>
-          </>
+          </div>
         }
       />
-      <TemplateModal open={createOpen} onClose={() => setCreateOpen(false)} />
 
-      <div className="mb-4 grid gap-3 sm:grid-cols-4">
-        {[
-          { icon: Megaphone, label: 'Marketing', count: counts.marketing, color: 'text-[#0064e0] bg-[rgba(0,145,255,.15)]' },
-          { icon: FileText, label: 'Utility', count: counts.utility, color: 'text-[#0a1317] bg-[#f1f4f7]' },
-          { icon: Shield, label: 'OTP / Auth', count: counts.authentication, color: 'text-[#a121ce] bg-purple-50' },
-          { icon: Image, label: 'Media / Carousel', count: counts.media, color: 'text-[#1876f2] bg-blue-50' },
-        ].map(({ icon: Icon, label, count, color }) => (
-          <div key={label} className="surface-card flex items-center gap-3 p-4">
-            <div className={`flex h-10 w-10 items-center justify-center rounded-2xl ${color}`}>
+      <div className="mb-5 grid gap-3 grid-cols-2 sm:grid-cols-4 xl:grid-cols-8">
+        {statCards.map(({ label, value, icon: Icon, color }) => (
+          <div key={label} className="surface-card flex items-center gap-2.5 p-3">
+            <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${color}`}>
               <Icon className="h-4 w-4" />
             </div>
-            <div>
-              <p className="text-lg font-bold text-[var(--text-primary)]">{count}</p>
-              <p className="text-xs text-[var(--text-muted)]">{label}</p>
+            <div className="min-w-0">
+              <p className="text-lg font-bold leading-tight" style={{ color: 'var(--text-primary)' }}>{value}</p>
+              <p className="truncate text-[10px] font-semibold uppercase tracking-wide" style={{ color: 'var(--text-muted)' }}>{label}</p>
             </div>
           </div>
         ))}
       </div>
 
-      <Tabs
-        tabs={templateTabs.map((item) => ({ ...item, label: `${item.label} (${counts[item.id as keyof typeof counts] ?? 0})` }))}
-        active={tab}
-        onChange={setTab}
-      />
-
-      <DataTable
-        columns={[
-          { key: 'name', label: 'Name', render: (row) => <span className="font-medium">{row.name}</span> },
-          { key: 'category', label: 'Category', render: (row) => (
-            <span className="capitalize rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600">
-              {row.category === 'authentication' ? 'OTP / Auth' : row.category}
-            </span>
-          ) },
-          { key: 'template_type', label: 'Type', render: (row) => row.template_type || 'standard' },
-          { key: 'language', label: 'Language' },
-          { key: 'media_asset_display', label: 'Media', render: (row) => row.media_asset_display || '-' },
-          { key: 'status', label: 'Status', render: (row) => renderTemplateStatus(row) },
-          { key: 'updated_at', label: 'Updated', render: (row) => formatDate(row.updated_at) },
-        ]}
-        data={templates}
-        search={search}
-        onSearch={setSearch}
-        loading={isLoading}
-        actions={(row) => (
-          <div className="flex flex-wrap gap-1">
-            {row.status === 'draft' && (
-              <Button size="sm" onClick={() => submitMutation.mutate(row.id)} loading={submitMutation.isPending}>
-                <Send className="h-3 w-3" /> Submit
-              </Button>
-            )}
-            <Button size="sm" variant="secondary" onClick={() => refreshMutation.mutate(row.id)} loading={refreshMutation.isPending}>
-              <CheckCircle2 className="h-3 w-3" /> Refresh
-            </Button>
-            <Button size="sm" variant="secondary" onClick={() => window.open('https://business.facebook.com/wa/manage/message-templates/', '_blank')}>
-              <ExternalLink className="h-3 w-3" /> Meta
-            </Button>
-            <Button size="sm" variant="danger" onClick={() => deleteMutation.mutate(row.id)} loading={deleteMutation.isPending}>
-              <Trash2 className="h-3 w-3" />
-            </Button>
+      <div className="mb-4 space-y-3">
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+          <div className="relative max-w-md flex-1">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2" style={{ color: 'var(--text-muted)' }} />
+            <input
+              value={search}
+              onChange={(e) => { setSearch(e.target.value); setPage(1) }}
+              placeholder="Search name, Meta ID, category, language…"
+              className="h-10 w-full rounded-full border py-2 pl-10 pr-4 text-sm outline-none focus:border-brand-500"
+              style={{ borderColor: 'var(--border)', background: 'var(--bg-subtle)', color: 'var(--text-primary)' }}
+            />
           </div>
-        )}
-      />
+          <div className="flex items-center gap-2 text-xs" style={{ color: 'var(--text-muted)' }}>
+            <span>{filtered.length} templates</span>
+            <select
+              value={pageSize}
+              onChange={(e) => { setPageSize(Number(e.target.value) as typeof pageSize); setPage(1) }}
+              className="h-9 rounded-lg border px-2 text-xs"
+              style={{ borderColor: 'var(--border)', background: 'var(--bg-card)' }}
+            >
+              {PAGE_SIZES.map((size) => (
+                <option key={size} value={size}>{size} per page</option>
+              ))}
+            </select>
+          </div>
+        </div>
+
+        <div className="flex flex-wrap gap-2">
+          {STATUS_FILTERS.map((f) => (
+            <FilterChip
+              key={f.id}
+              label={f.label}
+              active={statusFilters.has(f.id)}
+              onClick={() => toggleStatusFilter(f.id)}
+            />
+          ))}
+          <span className="mx-1 self-center text-xs" style={{ color: 'var(--border)' }}>|</span>
+          {CATEGORY_FILTERS.map((f) => (
+            <FilterChip
+              key={f.id}
+              label={f.label}
+              active={categoryFilters.has(f.id)}
+              onClick={() => toggleCategoryFilter(f.id)}
+            />
+          ))}
+        </div>
+      </div>
+
+      {selectedIds.size > 0 && (
+        <div className="mb-4 flex flex-wrap items-center gap-2 rounded-xl border px-4 py-3" style={{ borderColor: 'var(--border)', background: 'var(--bg-subtle)' }}>
+          <span className="text-sm font-semibold">{selectedIds.size} selected</span>
+          <Button size="sm" variant="secondary" onClick={handleBulkRefresh} loading={refreshMutation.isPending}>
+            <RefreshCw className="h-3 w-3" /> Refresh
+          </Button>
+          <Button size="sm" variant="secondary" onClick={() => syncMutation.mutate()} loading={syncMutation.isPending}>
+            Sync
+          </Button>
+          <Button
+            size="sm"
+            variant="secondary"
+            onClick={() => exportTemplatesJson(allTemplates.filter((t) => selectedIds.has(t.id)))}
+          >
+            Export
+          </Button>
+          <Button size="sm" variant="danger" onClick={handleBulkDelete}>
+            <Trash2 className="h-3 w-3" /> Delete
+          </Button>
+        </div>
+      )}
+
+      {isLoading ? (
+        <p className="py-12 text-center text-sm" style={{ color: 'var(--text-muted)' }}>Loading templates…</p>
+      ) : filtered.length === 0 ? (
+        <div className="surface-card py-16 text-center">
+          <p className="text-base font-semibold" style={{ color: 'var(--text-primary)' }}>No templates found.</p>
+          <p className="mt-1 text-sm" style={{ color: 'var(--text-muted)' }}>Create your first WhatsApp template.</p>
+          <Link to="/whatsapp-crm/templates/new" className="mt-4 inline-block">
+            <Button><Plus className="h-4 w-4" /> Create Template</Button>
+          </Link>
+        </div>
+      ) : (
+        <>
+          <div className="hidden md:block surface-card overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b text-left text-xs font-bold" style={{ borderColor: 'var(--border-subtle)', background: 'var(--bg-subtle)', color: 'var(--text-muted)' }}>
+                    <th className="px-3 py-3 w-10">
+                      <input
+                        type="checkbox"
+                        checked={pageItems.length > 0 && pageItems.every((t) => selectedIds.has(t.id))}
+                        onChange={(e) => toggleSelectAll(e.target.checked)}
+                      />
+                    </th>
+                    <th className="px-3 py-3">Status</th>
+                    <th className="px-3 py-3">Template Name</th>
+                    <th className="px-3 py-3">Category</th>
+                    <th className="px-3 py-3">Language</th>
+                    <th className="px-3 py-3">Quality</th>
+                    <th className="px-3 py-3">Created</th>
+                    <th className="px-3 py-3">Updated</th>
+                    <th className="px-3 py-3">Meta ID</th>
+                    <th className="px-3 py-3 w-12" />
+                  </tr>
+                </thead>
+                <tbody>
+                  {pageGroups.map((group) => (
+                    <Fragment key={group.key}>
+                      <tr style={{ background: 'var(--bg-subtle)' }}>
+                        <td colSpan={10} className="px-4 py-2 text-xs font-bold uppercase tracking-wide" style={{ color: 'var(--text-muted)' }}>
+                          {group.label} ({group.items.length})
+                        </td>
+                      </tr>
+                      {group.items.map((template) => (
+                        <TemplateRow
+                          key={template.id}
+                          template={template}
+                          selected={selectedIds.has(template.id)}
+                          onSelect={(checked) => toggleSelect(template.id, checked)}
+                          onOpen={() => openTemplate(template.id)}
+                          onRefresh={() => refreshMutation.mutate(template.id)}
+                          onDelete={() => requestDelete({
+                            itemName: template.name,
+                            itemType: 'WhatsApp template',
+                            associatedDataMessage:
+                              'Deleting this template will permanently remove it from your workspace. Campaigns using this template may be affected.',
+                            onConfirm: () => deleteMutation.mutateAsync(template.id),
+                          })}
+                          refreshing={refreshMutation.isPending}
+                        />
+                      ))}
+                    </Fragment>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <div className="md:hidden space-y-4">
+            {pageGroups.map((group) => (
+              <div key={group.key}>
+                <p className="mb-2 text-xs font-bold uppercase tracking-wide" style={{ color: 'var(--text-muted)' }}>
+                  {group.label}
+                </p>
+                <div className="space-y-3">
+                  {group.items.map((template) => (
+                    <TemplateMobileCard
+                      key={template.id}
+                      template={template}
+                      selected={selectedIds.has(template.id)}
+                      onSelect={(checked) => toggleSelect(template.id, checked)}
+                      onOpen={() => openTemplate(template.id)}
+                      onDelete={() => requestDelete({
+                        itemName: template.name,
+                        itemType: 'WhatsApp template',
+                        associatedDataMessage:
+                          'Deleting this template will permanently remove it from your workspace.',
+                        onConfirm: () => deleteMutation.mutateAsync(template.id),
+                      })}
+                    />
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <div className="mt-4 flex items-center justify-between text-sm" style={{ color: 'var(--text-muted)' }}>
+            <span>Page {currentPage} of {totalPages}</span>
+            <div className="flex gap-2">
+              <Button size="sm" variant="secondary" disabled={currentPage <= 1} onClick={() => setPage((p) => p - 1)}>
+                Previous
+              </Button>
+              <Button size="sm" variant="secondary" disabled={currentPage >= totalPages} onClick={() => setPage((p) => p + 1)}>
+                Next
+              </Button>
+            </div>
+          </div>
+        </>
+      )}
+      {deleteDialog}
     </div>
   )
 }

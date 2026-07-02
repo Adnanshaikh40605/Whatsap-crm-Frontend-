@@ -13,6 +13,8 @@ import { DashboardPage } from './pages/DashboardPage'
 import { InboxPage } from './pages/InboxPage'
 import { CampaignsPage } from './pages/CampaignsPage'
 import { TemplatesPage } from './pages/TemplatesPage'
+import { TemplateDetailPage } from './pages/TemplateDetailPage'
+import { CreateTemplatePage } from './pages/CreateTemplatePage'
 import { ContactsPage } from './pages/ContactsPage'
 import { CrmPage } from './pages/CrmPage'
 import { MediaPage } from './pages/MediaPage'
@@ -25,6 +27,7 @@ import { WhatsAppApiGuidePage } from './pages/WhatsAppApiGuidePage'
 import { SmsPage } from './pages/SmsPage'
 import { MessageLogPage } from './pages/MessageLogPage'
 import { SmsDashboardPage } from './pages/SmsDashboardPage'
+import { BusinessProfilePage } from './pages/BusinessProfilePage'
 import { AccountSettingsPage } from './pages/AccountSettingsPage'
 import { ModulePlaceholderPage } from './pages/ModulePlaceholderPage'
 
@@ -53,6 +56,8 @@ export default function App() {
               <Route path="/whatsapp-crm/dashboard" element={<DashboardPage />} />
               <Route path="/whatsapp-crm/inbox" element={<InboxPage />} />
               <Route path="/whatsapp-crm/templates" element={<TemplatesPage />} />
+              <Route path="/whatsapp-crm/templates/new" element={<CreateTemplatePage />} />
+              <Route path="/whatsapp-crm/templates/:id" element={<TemplateDetailPage />} />
               <Route path="/whatsapp-crm/campaigns" element={<CampaignsPage />} />
               <Route path="/whatsapp-crm/campaigns/:id" element={<CampaignDetailPage />} />
               <Route path="/whatsapp-crm/contacts" element={<ContactsPage />} />
@@ -60,11 +65,12 @@ export default function App() {
               <Route path="/whatsapp-crm/message-logs" element={<MessageLogPage channel="whatsapp" title="WhatsApp Message Logs" subtitle="WhatsApp-only sent, delivered, read, failed, and inbound message history." />} />
               <Route path="/whatsapp-crm/media" element={<MediaPage />} />
               <Route path="/whatsapp-crm/api-settings" element={<QRCodePage />} />
+              <Route path="/whatsapp-crm/business-profile" element={<BusinessProfilePage />} />
               <Route path="/whatsapp-crm/setup-guide" element={<WhatsAppApiGuidePage />} />
               <Route path="/whatsapp-crm/settings" element={<SettingsPage />} />
               <Route path="/whatsapp-crm/settings/:section" element={<SettingsPage />} />
-              <Route path="/whatsapp-crm/automation" element={<ModulePlaceholderPage project="WhatsApp CRM" title="WhatsApp Automation" description="WhatsApp-only automation workflows, triggers, and bot actions." items={['New WhatsApp message trigger', 'Send approved template', 'Assign conversation', 'Webhook/action steps']} />} />
-              <Route path="/whatsapp-crm/reports" element={<ModulePlaceholderPage project="WhatsApp CRM" title="WhatsApp Reports" description="WhatsApp-only delivery, campaign, template, inbox, and agent performance reports." items={['Campaign funnel', 'Template quality', 'Delivery/read rates', 'Agent response time']} />} />
+              <Route path="/whatsapp-crm/automation" element={<Navigate to="/whatsapp-crm/dashboard" replace />} />
+              <Route path="/whatsapp-crm/reports" element={<Navigate to="/whatsapp-crm/dashboard" replace />} />
 
               <Route path="/sms-crm/dashboard" element={<SmsDashboardPage />} />
               <Route path="/sms-crm/send" element={<SmsPage />} />
@@ -85,22 +91,22 @@ export default function App() {
               <Route path="/crm" element={<CrmPage />} />
               <Route path="/templates" element={<Navigate to="/whatsapp-crm/templates" replace />} />
               <Route path="/media" element={<Navigate to="/whatsapp-crm/media" replace />} />
-              <Route path="/automation" element={<Navigate to="/whatsapp-crm/automation" replace />} />
+              <Route path="/automation" element={<Navigate to="/whatsapp-crm/dashboard" replace />} />
               <Route path="/campaigns" element={<Navigate to="/whatsapp-crm/campaigns" replace />} />
               <Route path="/campaigns/:id" element={<CampaignDetailPage />} />
               <Route path="/message-log" element={<Navigate to="/whatsapp-crm/message-logs" replace />} />
               <Route path="/settings" element={<Navigate to="/whatsapp-crm/settings" replace />} />
               <Route path="/settings/:section" element={<SettingsPage />} />
 
-              <Route path="/bot-flows" element={<Navigate to="/whatsapp-crm/automation" replace />} />
-              <Route path="/bot-flows/:id/builder" element={<Navigate to="/whatsapp-crm/automation" replace />} />
-              <Route path="/bot-replies" element={<Navigate to="/whatsapp-crm/automation" replace />} />
+              <Route path="/bot-flows" element={<Navigate to="/whatsapp-crm/dashboard" replace />} />
+              <Route path="/bot-flows/:id/builder" element={<Navigate to="/whatsapp-crm/dashboard" replace />} />
+              <Route path="/bot-replies" element={<Navigate to="/whatsapp-crm/dashboard" replace />} />
               <Route path="/marketplace" element={<Navigate to="/projects" replace />} />
-              <Route path="/analytics" element={<Navigate to="/whatsapp-crm/reports" replace />} />
-              <Route path="/ai-agent" element={<Navigate to="/whatsapp-crm/automation" replace />} />
+              <Route path="/analytics" element={<Navigate to="/whatsapp-crm/dashboard" replace />} />
+              <Route path="/ai-agent" element={<Navigate to="/whatsapp-crm/dashboard" replace />} />
               <Route path="/team" element={<Navigate to="/whatsapp-crm/settings/team" replace />} />
               <Route path="/admin/companies" element={<CompaniesAdminPage />} />
-              <Route path="/chatbot" element={<Navigate to="/whatsapp-crm/automation" replace />} />
+              <Route path="/chatbot" element={<Navigate to="/whatsapp-crm/dashboard" replace />} />
             </Route>
             <Route path="*" element={<Navigate to="/projects" replace />} />
           </Routes>

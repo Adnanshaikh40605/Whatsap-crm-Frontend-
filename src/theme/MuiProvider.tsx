@@ -1,5 +1,7 @@
 import { useMemo, type ReactNode } from 'react'
 import { ThemeProvider, CssBaseline } from '@mui/material'
+import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider'
+import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs'
 import { getTheme } from './index'
 import { useTheme } from '../context/ThemeContext'
 
@@ -12,8 +14,10 @@ export function MuiProvider({ children }: { children: ReactNode }) {
   const muiTheme = useMemo(() => getTheme(mode), [mode])
   return (
     <ThemeProvider theme={muiTheme}>
-      <CssBaseline />
-      {children}
+      <LocalizationProvider dateAdapter={AdapterDayjs}>
+        <CssBaseline />
+        {children}
+      </LocalizationProvider>
     </ThemeProvider>
   )
 }

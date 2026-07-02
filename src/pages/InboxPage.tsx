@@ -1,13 +1,16 @@
-import { useState } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
-  Search, Bot, UserCheck, Send, Tag, StickyNote, Phone, ArrowLeft,
-  Sparkles, Mail, Building2, Lightbulb, Target, Check, CheckCheck,
+  Search, UserCheck, Send, Tag, StickyNote, Phone, ArrowLeft,
+  Sparkles, Mail, Building2, Lightbulb, Target,
 } from 'lucide-react'
 import { inboxApi, crmApi, aiApi } from '../lib/api'
 import { Button } from '../components/ui/Button'
 import { Badge } from '../components/ui/Badge'
 import { cn, formatChatTime, formatMessageTime } from '../lib/utils'
+import { MessageDeliveryTicks } from '../components/inbox/MessageDeliveryTicks'
+import { useInboxSocket, type InboxSocketEvent } from '../hooks/useInboxSocket'
+import { useAuth } from '../context/AuthContext'
 import type { Conversation, Lead } from '../types'
 
 interface Message {
@@ -18,8 +21,14 @@ interface Message {
   created_at: string
   status?: string
   whatsapp_message_id?: string
+  sent_at?: string | null
+  delivered_at?: string | null
+  read_at?: string | null
+  failed_at?: string | null
+  error_reason?: string | null
 }
 
+type InboxFilter = 'all' | 'unread' | 'sent' | 'delivered' | 'read' | 'failed' | 'pending'
 
 function Avatar({ name, size = 'md', className }: { name?: string; size?: 'sm' | 'md' | 'lg'; className?: string }) {
   const sizes = { sm: 'h-8 w-8 text-xs', md: 'h-9 w-9 text-sm', lg: 'h-14 w-14 text-lg' }
@@ -31,50 +40,43 @@ function Avatar({ name, size = 'md', className }: { name?: string; size?: 'sm' |
   )
 }
 
-function DeliveryState({ status }: { status?: string }) {
-  const normalized = status || 'sent'
-  if (normalized === 'read') {
-    return (
-      <span className="inline-flex items-center gap-0.5 text-[#34b7f1]">
-        <CheckCheck className="h-3 w-3" /> Read
-      </span>
-    )
-  }
-  if (normalized === 'delivered') {
-    return (
-      <span className="inline-flex items-center gap-0.5">
-        <CheckCheck className="h-3 w-3" /> Delivered
-      </span>
-    )
-  }
-  if (normalized === 'failed') {
-    return <span className="font-semibold text-red-600">Failed</span>
-  }
-  return (
-    <span className="inline-flex items-center gap-0.5">
-      <Check className="h-3 w-3" /> Sent to Meta
-    </span>
-  )
+function formatAnalyticsTime(value?: string | null) {
+  if (!value) return '—'
+  return formatMessageTime(value)
+}
+
+function formatDuration(seconds?: number | null) {
+  if (!seconds && seconds !== 0) return '—'
+  if (seconds < 60) return `${Math.round(seconds)} sec`
+  return `${Math.round(seconds / 60)} min`
 }
 
 export function InboxPage() {
   const queryClient = useQueryClient()
+  const { organization } = useAuth()
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [search, setSearch] = useState('')
   const [reply, setReply] = useState('')
   const [noteMode, setNoteMode] = useState(false)
   const [tagInput, setTagInput] = useState('')
   const [noteText, setNoteText] = useState('')
-  const [filter, setFilter] = useState<'all' | 'unread' | 'bot'>('all')
+  const [filter, setFilter] = useState<InboxFilter>('all')
+
+  const conversationParams =
+    filter === 'delivered' || filter === 'read' || filter === 'failed' || filter === 'sent' || filter === 'pending'
+      ? { delivery_status: filter === 'pending' ? 'sent' : filter }
+      : undefined
 
   const { data: conversations, isLoading } = useQuery({
-    queryKey: ['conversations'],
-    queryFn: () => inboxApi.conversations().then((r) => r.data.results ?? r.data.data ?? r.data),
+    queryKey: ['conversations', conversationParams],
+    queryFn: () => inboxApi.conversations(conversationParams).then((r) => r.data.results ?? r.data.data ?? r.data),
+    refetchInterval: 15000,
   })
   const { data: messages } = useQuery({
     queryKey: ['messages', selectedId],
     queryFn: () => inboxApi.messages(selectedId!).then((r) => r.data.results ?? r.data.data ?? r.data),
     enabled: !!selectedId,
+    refetchInterval: selectedId ? 15000 : false,
   })
   const { data: leads } = useQuery({
     queryKey: ['leads'],
@@ -84,6 +86,69 @@ export function InboxPage() {
     queryKey: ['stages'],
     queryFn: () => crmApi.stages().then((r) => r.data.results ?? r.data.data ?? r.data),
   })
+  const { data: analyticsData } = useQuery({
+    queryKey: ['message-analytics', selectedId],
+    queryFn: () => inboxApi.messageAnalytics(selectedId!).then((r) => r.data.data ?? r.data),
+    enabled: !!selectedId,
+  })
+
+  const handleSocketEvent = useCallback((event: InboxSocketEvent) => {
+    if (event.type === 'message_status_updated') {
+      const msg = event.message
+      queryClient.setQueryData<Message[]>(['messages', msg.conversation_id], (old) => {
+        if (!old) return old
+        return old.map((item) => (item.id === msg.id ? { ...item, ...msg } : item))
+      })
+      queryClient.setQueryData<Conversation[]>(['conversations', conversationParams], (old) => {
+        if (!old) return old
+        return old.map((conv) =>
+          conv.id === msg.conversation_id
+            ? { ...conv, last_outbound_status: event.conversation?.last_outbound_status || msg.status }
+            : conv,
+        )
+      })
+      queryClient.invalidateQueries({ queryKey: ['message-analytics', msg.conversation_id] })
+    }
+    if (event.type === 'message_created') {
+      const msg = event.message
+      const conversationId = typeof msg.conversation === 'string' ? msg.conversation : undefined
+      if (conversationId) {
+        queryClient.setQueryData<Message[]>(['messages', conversationId], (old) => {
+          if (!old) return old
+          if (msg.id && old.some((item) => item.id === msg.id)) return old
+          return [...old, msg as Message]
+        })
+      }
+      queryClient.invalidateQueries({ queryKey: ['conversations'] })
+    }
+    if (event.type === 'conversation_updated') {
+      const updated = event.conversation
+      if (!updated.id) return
+      queryClient.setQueryData<Conversation[]>(['conversations', conversationParams], (old) => {
+        if (!old) return old
+        const exists = old.some((conv) => conv.id === updated.id)
+        if (!exists) {
+          queryClient.invalidateQueries({ queryKey: ['conversations'] })
+          return old
+        }
+        return old.map((conv) => (conv.id === updated.id ? { ...conv, ...updated } : conv))
+      })
+    }
+  }, [queryClient, conversationParams])
+
+  useInboxSocket(organization?.id, handleSocketEvent)
+
+  useEffect(() => {
+    if (!selectedId) return
+    inboxApi.markRead(selectedId).then(() => {
+      queryClient.setQueryData<Conversation[]>(['conversations', conversationParams], (old) => {
+        if (!old) return old
+        return old.map((conv) => (conv.id === selectedId ? { ...conv, unread_count: 0 } : conv))
+      })
+    }).catch(() => {
+      // ignore mark-read failures
+    })
+  }, [selectedId, queryClient, conversationParams])
 
   const sendMutation = useMutation({
     mutationFn: (content: string) => {
@@ -95,11 +160,6 @@ export function InboxPage() {
       queryClient.invalidateQueries({ queryKey: ['conversations'] })
       setReply('')
     },
-  })
-
-  const takeoverMutation = useMutation({
-    mutationFn: () => inboxApi.takeover(selectedId!),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['conversations'] }),
   })
 
   const addTagMutation = useMutation({
@@ -116,14 +176,25 @@ export function InboxPage() {
   const allConvs = (conversations as (Conversation & { tags?: string[] })[]) ?? []
   const list = allConvs.filter((c) => {
     const matchSearch = !search || (c.contact?.full_name || c.contact?.phone || '').toLowerCase().includes(search.toLowerCase())
-    const matchFilter = filter === 'all' || (filter === 'unread' && c.unread_count > 0) || (filter === 'bot' && c.is_bot_active)
+    const matchFilter =
+      filter === 'all' ||
+      (filter === 'unread' && c.unread_count > 0) ||
+      (['sent', 'delivered', 'read', 'failed', 'pending'].includes(filter) &&
+        (c.last_outbound_status === (filter === 'pending' ? 'sent' : filter) ||
+          (filter === 'pending' && c.last_outbound_status === 'sending')))
     return matchSearch && matchFilter
   })
   const selected = allConvs.find((c) => c.id === selectedId)
   const thread = (messages as Message[]) ?? []
-  const hasOutboundWaitingForWebhook = thread.some(
-    (msg) => msg.direction === 'outbound' && !msg.is_internal_note && msg.status === 'sent',
-  )
+  const analytics = (analyticsData as {
+    total_sent?: number
+    total_read?: number
+    read_rate?: number
+    last_delivered_at?: string | null
+    last_read_at?: string | null
+    average_read_seconds?: number | null
+    total_failed?: number
+  }) ?? {}
   
   const { data: aiSummary, isLoading: summaryLoading } = useQuery({
     queryKey: ['ai-summary', selectedId],
@@ -163,13 +234,21 @@ export function InboxPage() {
               className="w-full rounded-xl border py-2 pl-9 pr-3 text-xs outline-none focus:border-brand-500 transition-colors"
               style={{ background: 'var(--bg-subtle)', borderColor: 'var(--border)', color: 'var(--text-primary)' }} />
           </div>
-          <div className="mt-2 flex gap-1">
-            {(['all', 'unread', 'bot'] as const).map((f) => (
+          <div className="mt-2 flex flex-wrap gap-1">
+            {([
+              ['all', 'All'],
+              ['unread', 'Unread'],
+              ['pending', 'Pending'],
+              ['sent', 'Sent'],
+              ['delivered', 'Delivered'],
+              ['read', 'Read'],
+              ['failed', 'Failed'],
+            ] as const).map(([f, label]) => (
               <button key={f} onClick={() => setFilter(f)}
                 className={cn('rounded-lg px-2 py-1 text-[10px] font-semibold uppercase tracking-wide transition-colors',
                   filter === f ? 'bg-brand-600 text-white' : 'hover:bg-[var(--hover)]')}
                 style={{ color: filter === f ? undefined : 'var(--text-muted)' }}>
-                {f}
+                {label}
               </button>
             ))}
           </div>
@@ -203,21 +282,26 @@ export function InboxPage() {
                   </p>
                   <div className="flex items-center justify-between gap-1">
                     <p className="truncate text-[11px]" style={{ color: 'var(--text-muted)' }}>
-                      <span className="font-semibold" style={{ color: 'var(--text-secondary)' }}>You: </span>
-                      {conv.last_message_preview || 'No messages'}
+                      {conv.metadata?.last_message_direction === 'inbound' ? (
+                        <span>{conv.last_message_preview || 'No messages'}</span>
+                      ) : (
+                        <>
+                          <span className="font-semibold" style={{ color: 'var(--text-secondary)' }}>You: </span>
+                          {conv.last_message_preview || 'No messages'}
+                        </>
+                      )}
                     </p>
-                    {conv.unread_count > 0 && (
-                      <span className="flex h-4 min-w-4 items-center justify-center rounded-full bg-brand-600 px-1 text-[9px] font-bold text-white">
-                        {conv.unread_count}
-                      </span>
-                    )}
+                    <div className="flex shrink-0 items-center gap-1">
+                      {conv.last_outbound_status && (
+                        <MessageDeliveryTicks status={conv.last_outbound_status} compact />
+                      )}
+                      {conv.unread_count > 0 && (
+                        <span className="flex h-4 min-w-4 items-center justify-center rounded-full bg-brand-600 px-1 text-[9px] font-bold text-white">
+                          {conv.unread_count}
+                        </span>
+                      )}
+                    </div>
                   </div>
-                  {conv.is_bot_active && (
-                    <span className="mt-1 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[9px] font-semibold"
-                      style={{ background: '#e6f4ea', color: '#1f7a3b' }}>
-                      <Bot className="h-2.5 w-2.5" /> Auto bot on
-                    </span>
-                  )}
                 </div>
               </button>
               )
@@ -242,14 +326,9 @@ export function InboxPage() {
                   {selected.contact?.full_name || selected.contact?.phone}
                 </p>
                 <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
-                  Customer · {selected.contact?.phone} · {selected.is_bot_active ? 'Auto bot active' : 'Human takeover'}
+                  Customer · {selected.contact?.phone}
                 </p>
               </div>
-              {selected.is_bot_active && (
-                <Button size="sm" variant="secondary" onClick={() => takeoverMutation.mutate()}>
-                  <UserCheck className="h-3 w-3" /> Take over
-                </Button>
-              )}
             </div>
 
             <div
@@ -262,12 +341,6 @@ export function InboxPage() {
               }}
             >
               <div className="mx-auto max-w-3xl space-y-3">
-                {hasOutboundWaitingForWebhook && (
-                  <div className="mx-auto max-w-lg rounded-xl bg-white/85 px-3 py-2 text-center text-xs shadow-sm"
-                    style={{ color: '#667781' }}>
-                    Delivery and blue ticks update after Meta webhook events reach this CRM.
-                  </div>
-                )}
                 {thread.map((msg) => {
                   const isOutbound = msg.direction === 'outbound'
                   const isNote = msg.is_internal_note
@@ -299,8 +372,11 @@ export function InboxPage() {
                         <span className="block whitespace-pre-wrap break-words leading-relaxed">{msg.content}</span>
                         <div className="mt-1 flex items-center justify-end gap-1.5 text-[10px]" style={{ color: '#667781' }}>
                           <span>{formatMessageTime(msg.created_at)}</span>
-                          {isOutbound && !isNote && <DeliveryState status={msg.status} />}
+                          {isOutbound && !isNote && <MessageDeliveryTicks status={msg.status} />}
                         </div>
+                        {isOutbound && !isNote && msg.status === 'failed' && msg.error_reason && (
+                          <p className="mt-1 text-right text-[10px] text-red-600">{msg.error_reason}</p>
+                        )}
                       </div>
                     </div>
                   )
@@ -404,13 +480,50 @@ export function InboxPage() {
               </div>
             </div>
 
+            {/* Message analytics */}
+            <div className="border-b p-4" style={{ borderColor: 'var(--border-subtle)' }}>
+              <p className="mb-2 text-[10px] font-semibold uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>
+                Message Analytics
+              </p>
+              <div className="space-y-2 text-xs" style={{ color: 'var(--text-secondary)' }}>
+                <div className="flex justify-between gap-2">
+                  <span>Last delivered</span>
+                  <span className="font-medium" style={{ color: 'var(--text-primary)' }}>
+                    {formatAnalyticsTime(analytics.last_delivered_at)}
+                  </span>
+                </div>
+                <div className="flex justify-between gap-2">
+                  <span>Last read</span>
+                  <span className="font-medium" style={{ color: 'var(--text-primary)' }}>
+                    {formatAnalyticsTime(analytics.last_read_at)}
+                  </span>
+                </div>
+                <div className="flex justify-between gap-2">
+                  <span>Total sent</span>
+                  <span className="font-medium" style={{ color: 'var(--text-primary)' }}>{analytics.total_sent ?? 0}</span>
+                </div>
+                <div className="flex justify-between gap-2">
+                  <span>Total read</span>
+                  <span className="font-medium" style={{ color: 'var(--text-primary)' }}>{analytics.total_read ?? 0}</span>
+                </div>
+                <div className="flex justify-between gap-2">
+                  <span>Read rate</span>
+                  <span className="font-medium" style={{ color: 'var(--text-primary)' }}>{analytics.read_rate ?? 0}%</span>
+                </div>
+                <div className="flex justify-between gap-2">
+                  <span>Avg read time</span>
+                  <span className="font-medium" style={{ color: 'var(--text-primary)' }}>
+                    {formatDuration(analytics.average_read_seconds)}
+                  </span>
+                </div>
+              </div>
+            </div>
+
             {/* Status */}
             <div className="border-b p-4" style={{ borderColor: 'var(--border-subtle)' }}>
               <p className="mb-2 text-[10px] font-semibold uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>Agent</p>
               <div className="flex items-center gap-2 text-xs" style={{ color: 'var(--text-primary)' }}>
-                {selected.is_bot_active
-                  ? <><Bot className="h-3.5 w-3.5 text-brand-600" /> Bot handling</>
-                  : <><UserCheck className="h-3.5 w-3.5 text-blue-500" /> Human agent</>}
+                <UserCheck className="h-3.5 w-3.5 text-blue-500" /> Team inbox
               </div>
               {matchedLead && (
                 <div className="mt-2 flex items-center gap-2 text-xs" style={{ color: 'var(--text-secondary)' }}>

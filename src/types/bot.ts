@@ -56,7 +56,9 @@ export interface WhatsAppTemplate {
   rejected_reason?: string
   media_asset?: string | null
   media_asset_display?: string
+  whatsapp_template_id?: string
   display_name?: string
+  last_synced_at?: string | null
   updated_at: string
   created_at: string
 }
@@ -70,6 +72,7 @@ export interface Campaign {
   template_display: string
   contact_group: string | null
   group_name: string
+  audience_filter?: { contact_ids?: string[] }
   total_recipients: number
   sent_count: number
   delivered_count: number

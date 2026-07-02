@@ -1,7 +1,7 @@
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import {
   LayoutDashboard, MessageSquare, Bot, Users, Megaphone, FileText,
-  Zap, BarChart3, Settings, LogOut, ChevronDown, Moon, Sun, Menu, X, Check, Building2, Smartphone,
+  Settings, LogOut, ChevronDown, Moon, Sun, Menu, X, Check, Building2, Smartphone,
 } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
 import { useTheme } from '../../context/ThemeContext'
@@ -14,7 +14,6 @@ const NAV_SECTIONS = [
     label: 'Overview',
     items: [
       { to: '/whatsapp-crm/dashboard', icon: LayoutDashboard, label: 'Dashboard', end: true },
-      { to: '/analytics', icon: BarChart3, label: 'Analytics' },
     ],
   },
   {
@@ -30,7 +29,6 @@ const NAV_SECTIONS = [
     items: [
       { to: '/whatsapp-crm/contacts', icon: Users, label: 'Contacts' },
       { to: '/whatsapp-crm/campaigns', icon: Megaphone, label: 'Campaigns' },
-      { to: '/whatsapp-crm/automation', icon: Zap, label: 'Automations' },
     ],
   },
   {
@@ -119,7 +117,7 @@ export function DashboardLayout() {
                   'flex items-center gap-2.5 rounded-[50px] px-3 py-2 text-[13px] font-medium transition-all',
                   isActive ? 'bg-brand-600 text-white' : 'hover:bg-[var(--hover)]',
                 )}>
-                <Building2 className="h-4 w-4" /> <span style={{ color: 'var(--text-secondary)' }}>Companies</span>
+                <Building2 className="h-4 w-4" /> <span style={{ color: 'var(--text-secondary)' }}>Projects</span>
               </NavLink>
             </div>
           )}

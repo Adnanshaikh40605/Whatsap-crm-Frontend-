@@ -1,12 +1,12 @@
 import { useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { FileSpreadsheet, Send, Upload, Users, X } from 'lucide-react'
+import { FileSpreadsheet, Send, Upload, User, Users, X } from 'lucide-react'
 import { campaignApi, crmApi } from '../../lib/api'
 import { Button } from '../ui/Button'
 import { Input } from '../ui/Input'
 import type { Campaign } from '../../types/bot'
 
-type AudienceMode = 'existing' | 'manual' | 'upload'
+type AudienceMode = 'existing' | 'single' | 'manual' | 'upload'
 
 interface Props {
   campaign: Campaign | null
@@ -16,6 +16,7 @@ interface Props {
 
 type ApiEnvelope<T> = { data?: T; results?: T }
 type Group = { id: string; name: string; contact_count: number }
+type ContactRow = { id: string; first_name?: string; last_name?: string; phone: string }
 
 const unwrap = <T,>(value: ApiEnvelope<T> | T): T => {
   if (value && typeof value === 'object' && 'data' in value) return (value as ApiEnvelope<T>).data as T
@@ -41,6 +42,7 @@ export function LaunchAudienceModal({ campaign, open, onClose }: Props) {
   const queryClient = useQueryClient()
   const [mode, setMode] = useState<AudienceMode>('existing')
   const [selectedGroup, setSelectedGroup] = useState('')
+  const [selectedContact, setSelectedContact] = useState('')
   const [manualNumbers, setManualNumbers] = useState('')
   const [groupName, setGroupName] = useState('')
   const [file, setFile] = useState<File | null>(null)
@@ -52,8 +54,15 @@ export function LaunchAudienceModal({ campaign, open, onClose }: Props) {
     enabled: open,
     refetchOnMount: 'always',
   })
+  const { data: contacts } = useQuery({
+    queryKey: ['contacts'],
+    queryFn: () => crmApi.contacts().then((r) => unwrap<ContactRow[]>(r.data)),
+    enabled: open,
+    refetchOnMount: 'always',
+  })
 
   const groupList = (groups as Group[]) ?? []
+  const contactList = (contacts as ContactRow[]) ?? []
   const phones = useMemo(() => extractPhones(manualNumbers), [manualNumbers])
 
   const defaultGroupName = () => `${campaign?.name || 'Campaign'} audience ${new Date().toLocaleString()}`
@@ -63,6 +72,16 @@ export function LaunchAudienceModal({ campaign, open, onClose }: Props) {
       if (!campaign) return
       setError('')
       let groupId: string | null = selectedGroup || null
+
+      if (mode === 'single') {
+        if (!selectedContact) throw new Error('Select a saved contact first.')
+        await campaignApi.update(campaign.id, {
+          contact_group: null,
+          audience_filter: { contact_ids: [selectedContact] },
+        })
+        await campaignApi.launch(campaign.id)
+        return
+      }
 
       if (mode === 'manual') {
         if (phones.length === 0) throw new Error('Add at least one valid phone number.')
@@ -111,6 +130,7 @@ export function LaunchAudienceModal({ campaign, open, onClose }: Props) {
       onClose()
       setMode('existing')
       setSelectedGroup('')
+      setSelectedContact('')
       setManualNumbers('')
       setGroupName('')
       setFile(null)
@@ -140,9 +160,10 @@ export function LaunchAudienceModal({ campaign, open, onClose }: Props) {
         </div>
 
         <div className="space-y-5 px-6 py-5">
-          <div className="grid gap-3 md:grid-cols-3">
+          <div className="grid gap-3 md:grid-cols-4">
             {[
-              { id: 'existing', label: 'Saved group', icon: Users, note: 'Use all contacts or a group' },
+              { id: 'existing', label: 'Saved group', icon: Users, note: 'All contacts or a group' },
+              { id: 'single', label: 'One contact', icon: User, note: 'Pick a saved number' },
               { id: 'manual', label: 'Manual numbers', icon: Send, note: 'Paste phone numbers' },
               { id: 'upload', label: 'Excel / CSV', icon: FileSpreadsheet, note: 'Import a file first' },
             ].map((option) => {
@@ -180,6 +201,34 @@ export function LaunchAudienceModal({ campaign, open, onClose }: Props) {
                   </option>
                 ))}
               </select>
+            </div>
+          )}
+
+          {mode === 'single' && (
+            <div className="space-y-3">
+              <label className="block text-sm font-bold" style={{ color: 'var(--text-primary)' }}>Saved contact</label>
+              {contactList.length === 0 ? (
+                <p className="rounded-2xl border border-[#f7b928] bg-[#fff5cc] px-4 py-3 text-xs font-bold text-[#0a1317]">
+                  No contacts saved yet. Add a contact under Contacts first.
+                </p>
+              ) : (
+                <select
+                  value={selectedContact}
+                  onChange={(event) => setSelectedContact(event.target.value)}
+                  className="h-12 w-full rounded-lg border bg-white px-3 text-base"
+                  style={{ borderColor: 'var(--border)', color: 'var(--text-primary)' }}
+                >
+                  <option value="">Select contact</option>
+                  {contactList.map((contact) => {
+                    const name = [contact.first_name, contact.last_name].filter(Boolean).join(' ').trim()
+                    return (
+                      <option key={contact.id} value={contact.id}>
+                        {name ? `${name} (${contact.phone})` : contact.phone}
+                      </option>
+                    )
+                  })}
+                </select>
+              )}
             </div>
           )}
 

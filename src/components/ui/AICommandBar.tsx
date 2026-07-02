@@ -45,8 +45,8 @@ export function AICommandBar() {
         setResult('Opening campaign builder...')
       } else if (q.includes('follow') || q.includes('workflow') || q.includes('automation')) {
         await aiApi.generateWorkflow(text)
-        navigate('/whatsapp-crm/automation')
-        setResult('Workflow created')
+        navigate('/whatsapp-crm/campaigns')
+        setResult('Workflow created — open Campaigns to continue')
       } else if (q.includes('hot lead') || q.includes('lead') || q.includes('crm')) {
         navigate('/whatsapp-crm/contacts?filter=hot')
         setResult('Showing hot leads')
@@ -54,8 +54,8 @@ export function AICommandBar() {
         navigate('/whatsapp-crm/inbox')
         setResult('Opening inbox')
       } else if (q.includes('analytic') || q.includes('insight')) {
-        navigate('/whatsapp-crm/reports')
-        setResult('Opening analytics')
+        navigate('/whatsapp-crm/dashboard')
+        setResult('Opening dashboard')
       } else {
         const res = await aiApi.chat(text)
         setResult(res.data?.data?.reply ?? res.data?.reply ?? 'Done.')

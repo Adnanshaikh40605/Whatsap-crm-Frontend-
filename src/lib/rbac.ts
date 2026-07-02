@@ -30,6 +30,15 @@ export function canManageProjects(user: { platform_role?: PlatformRole; is_super
   return isSuperAdmin(user) || user.platform_role === 'admin'
 }
 
+export function canEditBusinessProfile(user: {
+  is_superuser?: boolean
+  org_role?: string
+} | null): boolean {
+  if (!user) return false
+  if (user.is_superuser) return true
+  return user.org_role === 'owner' || user.org_role === 'admin'
+}
+
 export function canAccessModule(
   user: { platform_role?: PlatformRole; is_superuser?: boolean } | null,
   module: 'inbox' | 'dashboard' | 'settings' | 'campaigns' | 'admin',

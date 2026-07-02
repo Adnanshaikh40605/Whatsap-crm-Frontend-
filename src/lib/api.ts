@@ -104,6 +104,7 @@ export const inboxApi = {
   takeover: (id: string) => api.post(`/inbox/conversations/${id}/takeover/`),
   addTag: (id: string, tag: string) => api.post(`/inbox/conversations/${id}/add_tag/`, { tag }),
   markRead: (id: string) => api.post(`/inbox/conversations/${id}/mark_read/`),
+  messageAnalytics: (id: string) => api.get(`/inbox/conversations/${id}/message-analytics/`),
 }
 
 export const smsApi = {
@@ -123,10 +124,22 @@ export const campaignApi = {
   launch: (id: string) => api.post(`/campaigns/${id}/launch/`),
   archive: (id: string) => api.post(`/campaigns/${id}/archive/`),
   dashboard: (id: string) => api.get(`/campaigns/${id}/dashboard/`),
+  analyticsOverview: (id: string) => api.get(`/campaigns/${id}/analytics/overview/`),
+  analyticsRecipients: (id: string, params?: Record<string, string | number>) =>
+    api.get(`/campaigns/${id}/analytics/recipients/`, { params }),
+  exportReport: (id: string, params: { tab: string; format: string }) =>
+    api.get(`/campaigns/${id}/analytics/export/`, { params, responseType: 'blob' }),
+  emailReport: (id: string, data: { tab: string; email: string; format?: string }) =>
+    api.post(`/campaigns/${id}/analytics/email-report/`, data),
+  retryRecipient: (id: string, recipientId: string) =>
+    api.post(`/campaigns/${id}/retry-recipient/`, { recipient_id: recipientId }),
   templates: () => api.get('/campaigns/templates/'),
+  getTemplate: (id: string) => api.get(`/campaigns/templates/${id}/`),
   createTemplate: (data: Record<string, unknown>) => api.post('/campaigns/templates/', data),
   submitTemplate: (id: string) => api.post(`/campaigns/templates/${id}/submit_meta/`),
   refreshTemplate: (id: string) => api.post(`/campaigns/templates/${id}/refresh_meta/`),
+  sendTestTemplate: (id: string, data: { phone: string; body_params?: string[] }) =>
+    api.post(`/campaigns/templates/${id}/send_test/`, data),
   syncTemplates: () => api.post('/campaigns/templates/sync_meta/'),
   previewTemplate: (id: string) => api.get(`/campaigns/templates/${id}/preview/`),
   deleteTemplate: (id: string) => api.delete(`/campaigns/templates/${id}/`),
@@ -154,6 +167,14 @@ export const automationApi = {
 
 export const messageLogApi = {
   list: (params?: Record<string, string>) => api.get('/inbox/messages/', { params }),
+}
+
+export const whatsappCrmApi = {
+  getBusinessProfile: () => api.get('/whatsapp-crm/business-profile/'),
+  updateBusinessProfile: (data: FormData) => api.patch('/whatsapp-crm/business-profile/', data, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  }),
+  syncBusinessProfile: () => api.post('/whatsapp-crm/business-profile/sync/'),
 }
 
 export const onboardingApi = {

@@ -1,15 +1,25 @@
 import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { X, ChevronRight, Check } from 'lucide-react'
+import { X, ChevronRight, Check, User, Users } from 'lucide-react'
 import { campaignApi, crmApi } from '../../lib/api'
 import { Button } from '../ui/Button'
 import { Input } from '../ui/Input'
+import { formatScheduleLabel, ScheduleDateTimeField } from '../ui/ScheduleDateTimeField'
 
 const STEPS = ['Campaign Name', 'Audience', 'Template', 'Schedule', 'Review']
+
+type AudienceType = 'all' | 'group' | 'single'
 
 interface Props {
   open: boolean
   onClose: () => void
+}
+
+interface ContactRow {
+  id: string
+  first_name?: string
+  last_name?: string
+  phone: string
 }
 
 export function CampaignWizard({ open, onClose }: Props) {
@@ -17,7 +27,9 @@ export function CampaignWizard({ open, onClose }: Props) {
   const [step, setStep] = useState(0)
   const [form, setForm] = useState({
     name: '',
+    audience_type: 'all' as AudienceType,
     contact_group: '',
+    contact_id: '',
     template_id: '',
     scheduled_at: '',
     message_content: '',
@@ -35,21 +47,43 @@ export function CampaignWizard({ open, onClose }: Props) {
     enabled: open,
     refetchOnMount: 'always',
   })
+  const { data: contacts } = useQuery({
+    queryKey: ['contacts'],
+    queryFn: () => crmApi.contacts().then((r) => r.data.results ?? r.data.data ?? r.data),
+    enabled: open,
+    refetchOnMount: 'always',
+  })
 
   const createMutation = useMutation({
-    mutationFn: () => campaignApi.create({
-      name: form.name,
-      template: form.template_id,
-      contact_group: form.contact_group || null,
-      message_content: form.message_content,
-      audience_filter: {},
-      scheduled_at: form.scheduled_at || undefined,
-      status: form.scheduled_at ? 'scheduled' : 'draft',
-    }),
+    mutationFn: () => {
+      const audience_filter =
+        form.audience_type === 'single' && form.contact_id
+          ? { contact_ids: [form.contact_id] }
+          : {}
+
+      return campaignApi.create({
+        name: form.name,
+        template: form.template_id,
+        contact_group: form.audience_type === 'group' ? form.contact_group || null : null,
+        message_content: form.message_content,
+        audience_filter,
+        scheduled_at: form.scheduled_at || undefined,
+        status: form.scheduled_at ? 'scheduled' : 'draft',
+      })
+    },
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ['campaigns'] })
       onClose()
       setStep(0)
+      setForm({
+        name: '',
+        audience_type: 'all',
+        contact_group: '',
+        contact_id: '',
+        template_id: '',
+        scheduled_at: '',
+        message_content: '',
+      })
     },
   })
 
@@ -58,6 +92,28 @@ export function CampaignWizard({ open, onClose }: Props) {
   const tplList = ((templates as { id: string; name: string; category: string; status: string }[]) ?? [])
     .filter((template) => template.status === 'approved')
   const groupList = (groups as { id: string; name: string; contact_count: number }[]) ?? []
+  const contactList = (contacts as ContactRow[]) ?? []
+
+  const contactLabel = (contact: ContactRow) => {
+    const name = [contact.first_name, contact.last_name].filter(Boolean).join(' ').trim()
+    return name ? `${name} · ${contact.phone}` : contact.phone
+  }
+
+  const audienceSummary = () => {
+    if (form.audience_type === 'single') {
+      const contact = contactList.find((c) => c.id === form.contact_id)
+      return contact ? contactLabel(contact) : 'No contact selected'
+    }
+    if (form.audience_type === 'group') {
+      return groupList.find((g) => g.id === form.contact_group)?.name || 'All contacts'
+    }
+    return 'All contacts'
+  }
+
+  const audienceValid =
+    form.audience_type === 'all' ||
+    (form.audience_type === 'group' && Boolean(form.contact_group)) ||
+    (form.audience_type === 'single' && Boolean(form.contact_id))
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
@@ -86,25 +142,97 @@ export function CampaignWizard({ open, onClose }: Props) {
               placeholder="e.g. Monsoon Pest Control Offer" />
           )}
           {step === 1 && (
-            <div className="space-y-2">
-              <p className="text-sm font-medium mb-3" style={{ color: 'var(--text-primary)' }}>Select Contact Group</p>
-              <button onClick={() => setForm({ ...form, contact_group: '' })}
-                className={`w-full rounded-2xl border px-4 py-3 text-left text-sm font-bold ${
-                  form.contact_group === '' ? 'border-[#0a1317] bg-[#f1f4f7]' : ''}`}
-                style={{ borderColor: form.contact_group === '' ? undefined : 'var(--border)', color: 'var(--text-primary)' }}>
-                All contacts
-              </button>
-              {groupList.map((group) => (
-                <button key={group.id} onClick={() => setForm({ ...form, contact_group: group.id })}
-                  className={`w-full rounded-2xl border px-4 py-3 text-left text-sm font-bold capitalize ${
-                    form.contact_group === group.id ? 'border-[#0a1317] bg-[#f1f4f7]' : ''}`}
-                  style={{ borderColor: form.contact_group === group.id ? undefined : 'var(--border)', color: 'var(--text-primary)' }}>
-                  {group.name}
-                  <span className="ml-2 text-xs normal-case" style={{ color: 'var(--text-muted)' }}>
-                    {group.contact_count} contacts
-                  </span>
-                </button>
-              ))}
+            <div className="space-y-4">
+              <p className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>Who should receive this campaign?</p>
+
+              <div className="grid grid-cols-3 gap-2">
+                {[
+                  { id: 'all' as const, label: 'All contacts', icon: Users },
+                  { id: 'group' as const, label: 'Group', icon: Users },
+                  { id: 'single' as const, label: 'One number', icon: User },
+                ].map((option) => {
+                  const Icon = option.icon
+                  const active = form.audience_type === option.id
+                  return (
+                    <button
+                      key={option.id}
+                      type="button"
+                      onClick={() => setForm({
+                        ...form,
+                        audience_type: option.id,
+                        contact_group: option.id === 'group' ? form.contact_group : '',
+                        contact_id: option.id === 'single' ? form.contact_id : '',
+                      })}
+                      className={`rounded-2xl border px-3 py-3 text-center text-xs font-bold ${
+                        active ? 'border-[#0a1317] bg-[#f1f4f7]' : ''
+                      }`}
+                      style={{ borderColor: active ? undefined : 'var(--border)', color: 'var(--text-primary)' }}
+                    >
+                      <Icon className="mx-auto mb-1 h-4 w-4" />
+                      {option.label}
+                    </button>
+                  )
+                })}
+              </div>
+
+              {form.audience_type === 'all' && (
+                <p className="rounded-2xl border px-4 py-3 text-sm" style={{ borderColor: 'var(--border)', color: 'var(--text-secondary)' }}>
+                  Sends to every active contact in your CRM ({contactList.length} contact{contactList.length === 1 ? '' : 's'}).
+                </p>
+              )}
+
+              {form.audience_type === 'group' && (
+                <div className="space-y-2">
+                  {groupList.length === 0 ? (
+                    <p className="rounded-2xl border border-[#f7b928] bg-[#fff5cc] px-4 py-3 text-xs font-bold text-[#0a1317]">
+                      No groups yet. Create one under Contacts, or use &quot;One number&quot; to send to a saved contact.
+                    </p>
+                  ) : null}
+                  {groupList.map((group) => (
+                    <button
+                      key={group.id}
+                      type="button"
+                      onClick={() => setForm({ ...form, contact_group: group.id })}
+                      className={`w-full rounded-2xl border px-4 py-3 text-left text-sm font-bold capitalize ${
+                        form.contact_group === group.id ? 'border-[#0a1317] bg-[#f1f4f7]' : ''
+                      }`}
+                      style={{ borderColor: form.contact_group === group.id ? undefined : 'var(--border)', color: 'var(--text-primary)' }}
+                    >
+                      {group.name}
+                      <span className="ml-2 text-xs normal-case" style={{ color: 'var(--text-muted)' }}>
+                        {group.contact_count} contacts
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              {form.audience_type === 'single' && (
+                <div className="space-y-2">
+                  {contactList.length === 0 ? (
+                    <p className="rounded-2xl border border-[#f7b928] bg-[#fff5cc] px-4 py-3 text-xs font-bold text-[#0a1317]">
+                      No contacts saved yet. Add your number under Contacts first, then come back here.
+                    </p>
+                  ) : (
+                    contactList.map((contact) => (
+                      <button
+                        key={contact.id}
+                        type="button"
+                        onClick={() => setForm({ ...form, contact_id: contact.id })}
+                        className={`w-full rounded-2xl border px-4 py-3 text-left text-sm ${
+                          form.contact_id === contact.id ? 'border-[#0a1317] bg-[#f1f4f7]' : ''
+                        }`}
+                        style={{ borderColor: form.contact_id === contact.id ? undefined : 'var(--border)' }}
+                      >
+                        <span className="font-bold" style={{ color: 'var(--text-primary)' }}>
+                          {[contact.first_name, contact.last_name].filter(Boolean).join(' ') || 'Contact'}
+                        </span>
+                        <span className="mt-0.5 block text-xs" style={{ color: 'var(--text-muted)' }}>{contact.phone}</span>
+                      </button>
+                    ))
+                  )}
+                </div>
+              )}
             </div>
           )}
           {step === 2 && (
@@ -128,8 +256,20 @@ export function CampaignWizard({ open, onClose }: Props) {
           )}
           {step === 3 && (
             <div className="space-y-4">
-              <Input label="Schedule (optional)" type="datetime-local" value={form.scheduled_at}
-                onChange={(e) => setForm({ ...form, scheduled_at: e.target.value })} />
+              <ScheduleDateTimeField
+                label="Schedule (optional)"
+                value={form.scheduled_at}
+                onChange={(scheduled_at) => setForm({ ...form, scheduled_at })}
+              />
+              {form.scheduled_at ? (
+                <button
+                  type="button"
+                  onClick={() => setForm({ ...form, scheduled_at: '' })}
+                  className="text-xs font-semibold text-brand-600 hover:underline"
+                >
+                  Clear schedule — send immediately
+                </button>
+              ) : null}
               <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Leave empty to send immediately after review</p>
             </div>
           )}
@@ -137,9 +277,9 @@ export function CampaignWizard({ open, onClose }: Props) {
             <div className="space-y-3 text-sm" style={{ color: 'var(--text-secondary)' }}>
               <div className="rounded-2xl p-4" style={{ background: 'var(--hover)' }}>
                 <p><strong style={{ color: 'var(--text-primary)' }}>Name:</strong> {form.name}</p>
-                <p><strong style={{ color: 'var(--text-primary)' }}>Group:</strong> {groupList.find((g) => g.id === form.contact_group)?.name || 'All contacts'}</p>
+                <p><strong style={{ color: 'var(--text-primary)' }}>Audience:</strong> {audienceSummary()}</p>
                 <p><strong style={{ color: 'var(--text-primary)' }}>Template:</strong> {tplList.find((t) => t.id === form.template_id)?.name || 'None'}</p>
-                <p><strong style={{ color: 'var(--text-primary)' }}>Schedule:</strong> {form.scheduled_at || 'Send now'}</p>
+                <p><strong style={{ color: 'var(--text-primary)' }}>Schedule:</strong> {formatScheduleLabel(form.scheduled_at)}</p>
               </div>
             </div>
           )}
@@ -152,7 +292,11 @@ export function CampaignWizard({ open, onClose }: Props) {
           {step < STEPS.length - 1 ? (
             <Button
               onClick={() => setStep(step + 1)}
-              disabled={(step === 0 && !form.name) || (step === 2 && !form.template_id)}
+              disabled={
+                (step === 0 && !form.name) ||
+                (step === 1 && !audienceValid) ||
+                (step === 2 && !form.template_id)
+              }
             >
               Next <ChevronRight className="h-4 w-4" />
             </Button>

@@ -11,7 +11,7 @@ import {
   BusinessOutlined, Menu as MenuIcon, LightModeOutlined,
   DarkModeOutlined, UnfoldMore, Check, Logout, WhatsApp, GroupsOutlined,
   PermMediaOutlined, MenuBookOutlined, SmsOutlined, AccountTreeOutlined, FolderOutlined,
-  PersonOutlined,
+  StoreOutlined, PersonOutlined,
 } from '@mui/icons-material'
 import { useAuth } from '../../context/AuthContext'
 import { useTheme as useColorMode } from '../../context/ThemeContext'
@@ -34,7 +34,6 @@ const WHATSAPP_NAV_SECTIONS: NavSection[] = [
   { label: 'Overview', items: [
     { to: '/projects', icon: FolderOutlined, label: 'Projects' },
     { to: '/whatsapp-crm/dashboard', icon: SpaceDashboardOutlined, label: 'Dashboard' },
-    { to: '/account', icon: PersonOutlined, label: 'Account Settings' },
   ] },
   { label: 'Messaging', items: [
     { to: '/whatsapp-crm/inbox', icon: ForumOutlined, label: 'Inbox' },
@@ -46,11 +45,10 @@ const WHATSAPP_NAV_SECTIONS: NavSection[] = [
   ] },
   { label: 'Growth', items: [
     { to: '/whatsapp-crm/campaigns', icon: CampaignOutlined, label: 'Campaigns' },
-    { to: '/whatsapp-crm/automation', icon: AccountTreeOutlined, label: 'Automation' },
-    { to: '/whatsapp-crm/reports', icon: AssessmentOutlined, label: 'Reports' },
   ] },
   { label: 'Admin', items: [
     { to: '/whatsapp-crm/api-settings', icon: WhatsApp, label: 'API Settings' },
+    { to: '/whatsapp-crm/business-profile', icon: StoreOutlined, label: 'Business Profile' },
     { to: '/whatsapp-crm/setup-guide', icon: MenuBookOutlined, label: 'Setup Guide' },
     { to: '/whatsapp-crm/settings', icon: SettingsOutlined, label: 'Settings' },
   ] },
@@ -60,7 +58,6 @@ const SMS_NAV_SECTIONS: NavSection[] = [
   { label: 'Overview', items: [
     { to: '/projects', icon: FolderOutlined, label: 'Projects' },
     { to: '/sms-crm/dashboard', icon: SpaceDashboardOutlined, label: 'Dashboard' },
-    { to: '/account', icon: PersonOutlined, label: 'Account Settings' },
   ] },
   { label: 'Messaging', items: [
     { to: '/sms-crm/templates', icon: DescriptionOutlined, label: 'SMS Templates' },
@@ -79,7 +76,6 @@ const SMS_NAV_SECTIONS: NavSection[] = [
 const STAFF_WHATSAPP_NAV: NavSection[] = [
   { label: 'Overview', items: [
     { to: '/projects', icon: FolderOutlined, label: 'Projects' },
-    { to: '/account', icon: PersonOutlined, label: 'Account Settings' },
   ] },
   { label: 'Messaging', items: [
     { to: '/whatsapp-crm/inbox', icon: ForumOutlined, label: 'Inbox' },
@@ -89,7 +85,6 @@ const STAFF_WHATSAPP_NAV: NavSection[] = [
 const STAFF_SMS_NAV: NavSection[] = [
   { label: 'Overview', items: [
     { to: '/projects', icon: FolderOutlined, label: 'Projects' },
-    { to: '/account', icon: PersonOutlined, label: 'Account Settings' },
   ] },
   { label: 'Messaging', items: [
     { to: '/sms-crm/send', icon: SmsOutlined, label: 'Send SMS' },
@@ -206,16 +201,6 @@ export function AppShell() {
             {section.items.map(navItem)}
           </List>
         ))}
-        {user?.is_superuser && (
-          <List dense subheader={
-            <ListSubheader disableSticky sx={{
-              bgcolor: 'transparent', color: 'text.disabled', fontSize: 11, fontWeight: 700,
-              letterSpacing: '0.06em', textTransform: 'uppercase', lineHeight: 2.2, px: 1.5,
-            }}>Platform</ListSubheader>
-          }>
-            {navItem({ to: '/admin/companies', icon: BusinessOutlined, label: 'Companies' })}
-          </List>
-        )}
       </Box>
 
       {/* User footer */}
@@ -328,7 +313,7 @@ export function AppShell() {
 
       {/* User menu */}
       <Menu anchorEl={userAnchor} open={Boolean(userAnchor)} onClose={() => setUserAnchor(null)}>
-        <MenuItem onClick={() => { setUserAnchor(null); navigate('/account') }}>
+        <MenuItem onClick={() => { setUserAnchor(null); navigate('/whatsapp-crm/settings/account') }}>
           <ListItemIcon><PersonOutlined fontSize="small" /></ListItemIcon> Account Settings
         </MenuItem>
         {canAccessModule(user, 'settings') ? (

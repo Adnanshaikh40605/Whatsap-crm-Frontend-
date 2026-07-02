@@ -5,6 +5,7 @@ import { Plus, Pencil, Trash2, GitBranch } from 'lucide-react'
 import { automationApi } from '../lib/api'
 import { PageHeader, DataTable, StatusBadge } from '../components/ui/PageLayout'
 import { Button } from '../components/ui/Button'
+import { useDeleteConfirm } from '../hooks/useDeleteConfirm'
 import type { BotFlow } from '../types/bot'
 
 export function BotFlowsPage() {
@@ -21,6 +22,7 @@ export function BotFlowsPage() {
     mutationFn: (id: string) => automationApi.deleteBotFlow(id),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['bot-flows'] }),
   })
+  const { requestDelete, deleteDialog } = useDeleteConfirm()
 
   const createMutation = useMutation({
     mutationFn: () => automationApi.createBotFlow({
@@ -64,13 +66,26 @@ export function BotFlowsPage() {
         actions={(row) => (
           <div className="flex gap-1">
             <Button size="sm" variant="dark"><Pencil className="h-3 w-3" /></Button>
-            <Button size="sm" variant="danger" onClick={() => deleteMutation.mutate(row.id)}><Trash2 className="h-3 w-3" /></Button>
+            <Button
+              size="sm"
+              variant="danger"
+              onClick={() => requestDelete({
+                itemName: row.title,
+                itemType: 'bot flow',
+                associatedDataMessage:
+                  'Deleting this bot flow will permanently remove all associated replies and flow configuration.',
+                onConfirm: () => deleteMutation.mutateAsync(row.id),
+              })}
+            >
+              <Trash2 className="h-3 w-3" />
+            </Button>
             <Button size="sm" onClick={() => navigate(`/bot-flows/${row.id}/builder`)}>
               <GitBranch className="h-3 w-3" /> Flow Builder
             </Button>
           </div>
         )}
       />
+      {deleteDialog}
     </div>
   )
 }

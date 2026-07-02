@@ -12,6 +12,8 @@ import { useAuth, staffDefaultPath } from '../context/AuthContext'
 import { canManageProjects } from '../lib/rbac'
 import { orgApi } from '../lib/api'
 import { AppCard } from '../components/common'
+import { ConfirmDialog } from '../components/common/ConfirmDialog'
+import { buildDeleteConfirmMessage } from '../lib/deleteConfirm'
 import type { Organization } from '../types'
 
 type ProjectTab = 'whatsapp' | 'sms'
@@ -465,21 +467,20 @@ export function ProjectsPage() {
         </DialogActions>
       </Dialog>
 
-      <Dialog open={deleteStep === 'confirm'} onClose={closeDeleteDialog} maxWidth="xs" fullWidth>
-        <DialogTitle>Delete project?</DialogTitle>
-        <DialogContent>
-          <Typography variant="body2" color="text.secondary">
-            Are you sure you want to delete <strong>{deleteTarget?.name}</strong>? This will permanently remove all
-            contacts, templates, campaigns, and messages for this project.
-          </Typography>
-        </DialogContent>
-        <DialogActions sx={{ px: 3, pb: 2 }}>
-          <Button onClick={closeDeleteDialog}>Cancel</Button>
-          <Button color="error" variant="contained" onClick={confirmDeleteProject}>
-            Yes, continue
-          </Button>
-        </DialogActions>
-      </Dialog>
+      <ConfirmDialog
+        open={deleteStep === 'confirm'}
+        title="Delete project?"
+        message={deleteTarget ? buildDeleteConfirmMessage({
+          itemName: deleteTarget.name,
+          itemType: 'project',
+          associatedDataMessage:
+            'Deleting this project will permanently remove all contacts, templates, campaigns, and messages associated with it.',
+        }) : undefined}
+        confirmLabel="Continue"
+        severity="error"
+        onConfirm={confirmDeleteProject}
+        onClose={closeDeleteDialog}
+      />
 
       <Dialog open={deleteStep === 'password'} onClose={closeDeleteDialog} maxWidth="xs" fullWidth>
         <DialogTitle>Confirm with project password</DialogTitle>

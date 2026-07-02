@@ -3,7 +3,7 @@ import { useParams, useNavigate, Link } from 'react-router-dom'
 import { useMutation } from '@tanstack/react-query'
 import {
   Smartphone, Bot, Terminal, Building2, Users, Bell, Shield,
-  Palette, Webhook, ChevronRight, ArrowLeft, MessageCircle, RotateCcw,
+  Palette, Webhook, ChevronRight, ArrowLeft, MessageCircle, RotateCcw, User,
 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { orgApi } from '../lib/api'
@@ -11,8 +11,20 @@ import { SectionHeader } from '../components/ui/SectionHeader'
 import { Button } from '../components/ui/Button'
 import { Input } from '../components/ui/Input'
 import { useToast } from '../components/common'
+import { getApiOrigin, getApiUrl } from '../lib/config'
+import { AccountSettingsPanel } from '../components/settings/AccountSettingsPanel'
+
+const API_ORIGIN = getApiOrigin()
 
 const SETTINGS_CATEGORIES = [
+  {
+    id: 'account',
+    title: 'Account Settings',
+    description: 'Profile, password, and personal account preferences',
+    icon: User,
+    color: '#0f766e',
+    path: '/whatsapp-crm/settings/account',
+  },
   {
     id: 'general',
     title: 'Organization',
@@ -78,9 +90,6 @@ const SETTINGS_CATEGORIES = [
     path: '/whatsapp-crm/settings/appearance',
   },
 ]
-import { getApiOrigin, getApiUrl } from '../lib/config'
-
-const API_ORIGIN = getApiOrigin()
 
 export function SettingsPage() {
   const { section } = useParams()
@@ -248,6 +257,7 @@ export function SettingsPage() {
   }
 
   const sectionTitles: Record<string, { title: string; description: string }> = {
+    account: { title: 'Account Settings', description: 'Manage your profile and account password securely' },
     whatsapp: { title: 'WhatsApp Connection', description: 'Connect your Meta WhatsApp Business API' },
     'ai-bot': { title: 'AI & Bot Settings', description: 'Configure AI-powered responses and bot behavior' },
     api: { title: 'API & Webhooks', description: 'Manage API access and webhook integrations' },
@@ -277,6 +287,9 @@ export function SettingsPage() {
         </div>
       </div>
 
+      {section === 'account' ? (
+        <AccountSettingsPanel />
+      ) : (
       <div className="surface-card p-5">
         {section === 'whatsapp' && (
           <div className="space-y-4">
@@ -409,6 +422,7 @@ export function SettingsPage() {
           </div>
         )}
       </div>
+      )}
     </div>
   )
 }

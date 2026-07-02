@@ -1,5 +1,5 @@
 import {
-  Button, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle,
+  Box, Button, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle,
 } from '@mui/material'
 import type { ReactNode } from 'react'
 
@@ -20,17 +20,27 @@ export function ConfirmDialog({
   severity = 'primary', loading, onConfirm, onClose,
 }: ConfirmDialogProps) {
   return (
-    <Dialog open={open} onClose={onClose} maxWidth="xs" fullWidth>
+    <Dialog open={open} onClose={loading ? undefined : onClose} maxWidth="xs" fullWidth>
       <DialogTitle>{title}</DialogTitle>
       {message && (
         <DialogContent>
-          <DialogContentText>{message}</DialogContentText>
+          {typeof message === 'string' ? (
+            <DialogContentText component="div">{message}</DialogContentText>
+          ) : (
+            <Box sx={{ color: 'text.secondary', typography: 'body2', lineHeight: 1.6 }}>
+              {message}
+            </Box>
+          )}
         </DialogContent>
       )}
       <DialogActions sx={{ px: 3, pb: 2 }}>
-        <Button onClick={onClose} color="inherit" disabled={loading}>{cancelLabel}</Button>
+        <Button onClick={onClose} color="inherit" disabled={loading}>
+          {cancelLabel}
+        </Button>
         <Button onClick={onConfirm} variant="contained" color={severity} disabled={loading}>
-          {confirmLabel}
+          {loading
+            ? (confirmLabel === 'Delete' ? 'Deleting…' : 'Please wait…')
+            : confirmLabel}
         </Button>
       </DialogActions>
     </Dialog>

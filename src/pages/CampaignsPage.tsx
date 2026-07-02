@@ -69,7 +69,12 @@ export function CampaignsPage() {
         columns={[
           { key: 'name', label: 'Title', render: (r) => <span className="font-medium">{r.name}</span> },
           { key: 'template_display', label: 'Template', render: (r) => r.template_display || r.template_name || '—' },
-          { key: 'group_name', label: 'Group', render: (r) => r.group_name || 'All contacts' },
+          { key: 'group_name', label: 'Audience', render: (r) => {
+            const ids = (r as Campaign & { audience_filter?: { contact_ids?: string[] } }).audience_filter?.contact_ids
+            if (ids?.length === 1) return '1 contact'
+            if (ids && ids.length > 1) return `${ids.length} contacts`
+            return r.group_name || 'All contacts'
+          } },
           { key: 'total_recipients', label: 'No. of Contacts' },
           { key: 'sent_count', label: 'Sent' },
           { key: 'delivered_count', label: 'Delivered' },
