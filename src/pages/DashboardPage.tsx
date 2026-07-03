@@ -2,13 +2,15 @@ import { useQuery } from '@tanstack/react-query'
 import { Link as RouterLink } from 'react-router-dom'
 import { Box, Button, ListItemButton, Stack, Typography, Avatar } from '@mui/material'
 import {
-  ForumOutlined, CampaignOutlined, DescriptionOutlined, WhatsApp, GroupsOutlined, PermMediaOutlined,
-  MenuBookOutlined, PersonOutlined, LockOutlined, StoreOutlined, VerifiedUserOutlined,
-} from '@mui/icons-material'
+  MessagesSquare, Megaphone, FileText, MessageCircle, Users, Image,
+  BookOpen, User, Lock, Store, BadgeCheck,
+} from 'lucide-react'
 import { campaignApi, crmApi, whatsappCrmApi } from '../lib/api'
 import { useAuth } from '../context/AuthContext'
 import { PageHeader, StatCard, AppCard } from '../components/common'
 import { formatDate, formatNumber } from '../lib/utils'
+import { Icon } from '../components/ui/Icon'
+import { ICON } from '../lib/icons'
 
 export function DashboardPage() {
   const { organization } = useAuth()
@@ -96,13 +98,13 @@ export function DashboardPage() {
           <Stack direction={{ xs: 'column', md: 'row' }} spacing={3} sx={{ alignItems: { md: 'center' }, justifyContent: 'space-between' }}>
             <Stack direction="row" spacing={2} sx={{ alignItems: 'center' }}>
               <Avatar src={businessProfile.profile_picture_url || undefined} sx={{ width: 56, height: 56, bgcolor: 'primary.light' }}>
-                <StoreOutlined />
+                <Store size={ICON.lg} strokeWidth={1.75} />
               </Avatar>
               <Box>
                 <Typography variant="h6" sx={{ fontWeight: 700 }}>{businessProfile.business_name || organization?.name}</Typography>
                 <Typography variant="body2" color="text.secondary">{businessProfile.phone_number || '—'}</Typography>
                 <Stack direction="row" spacing={1} sx={{ mt: 0.5, alignItems: 'center' }}>
-                  <VerifiedUserOutlined fontSize="small" color="success" />
+                  <BadgeCheck size={ICON.sm} strokeWidth={1.75} color="#16a34a" />
                   <Typography variant="caption" color="success.main">
                     {businessProfile.code_verification_status === 'VERIFIED' ? 'Business Verified' : 'Profile Live'}
                   </Typography>
@@ -124,21 +126,21 @@ export function DashboardPage() {
 
       {/* KPI Row */}
       <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr', xl: 'repeat(4,1fr)' }, gap: 2, mb: 3 }}>
-        <StatCard label="WhatsApp" value={statusLabel} caption="Business API" icon={<WhatsApp />} />
-        <StatCard label="Templates" value={formatNumber(templateList.length)} caption="message templates" icon={<DescriptionOutlined />} />
-        <StatCard label="Contacts" value={formatNumber(contactList.length)} caption="saved contacts" icon={<GroupsOutlined />} />
-        <StatCard label="Campaigns" value={formatNumber(campaignList.length)} caption="created" icon={<CampaignOutlined />} />
+        <StatCard label="WhatsApp" value={statusLabel} caption="Business API" icon={<Icon icon={MessageCircle} size="md" />} />
+        <StatCard label="Templates" value={formatNumber(templateList.length)} caption="message templates" icon={<Icon icon={FileText} size="md" />} />
+        <StatCard label="Contacts" value={formatNumber(contactList.length)} caption="saved contacts" icon={<Icon icon={Users} size="md" />} />
+        <StatCard label="Campaigns" value={formatNumber(campaignList.length)} caption="created" icon={<Icon icon={Megaphone} size="md" />} />
       </Box>
 
       <AppCard title="Start here" subtitle="The only core actions for now">
         <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: 'repeat(3,1fr)' }, gap: 2 }}>
           {[
-            { to: '/whatsapp-crm/setup-guide', icon: <MenuBookOutlined />, label: 'Connect WhatsApp API', help: 'Step-by-step Meta setup guide' },
-            { to: '/whatsapp-crm/templates', icon: <DescriptionOutlined />, label: 'Create template', help: 'Build and manage WhatsApp templates' },
-            { to: '/whatsapp-crm/contacts', icon: <GroupsOutlined />, label: 'Import contacts', help: 'Upload CSV or Excel and group contacts' },
-            { to: '/whatsapp-crm/campaigns', icon: <CampaignOutlined />, label: 'Create campaign', help: 'Send approved templates to contacts' },
-            { to: '/whatsapp-crm/media', icon: <PermMediaOutlined />, label: 'Upload media', help: 'Store images, videos, PDFs, and documents' },
-            { to: '/whatsapp-crm/inbox', icon: <ForumOutlined />, label: 'Open inbox', help: 'Reply to customers on WhatsApp' },
+            { to: '/whatsapp-crm/setup-guide', icon: <Icon icon={BookOpen} size="md" />, label: 'Connect WhatsApp API', help: 'Step-by-step Meta setup guide' },
+            { to: '/whatsapp-crm/templates', icon: <Icon icon={FileText} size="md" />, label: 'Create template', help: 'Build and manage WhatsApp templates' },
+            { to: '/whatsapp-crm/contacts', icon: <Icon icon={Users} size="md" />, label: 'Import contacts', help: 'Upload CSV or Excel and group contacts' },
+            { to: '/whatsapp-crm/campaigns', icon: <Icon icon={Megaphone} size="md" />, label: 'Create campaign', help: 'Send approved templates to contacts' },
+            { to: '/whatsapp-crm/media', icon: <Icon icon={Image} size="md" />, label: 'Upload media', help: 'Store images, videos, PDFs, and documents' },
+            { to: '/whatsapp-crm/inbox', icon: <Icon icon={MessagesSquare} size="md" />, label: 'Open inbox', help: 'Reply to customers on WhatsApp' },
           ].map((a) => (
             <ListItemButton
               key={a.to}
@@ -146,7 +148,7 @@ export function DashboardPage() {
               to={a.to}
               sx={{ alignItems: 'flex-start', gap: 1.5, p: 2.5, bgcolor: 'action.hover', borderRadius: 2 }}
             >
-              <Box sx={{ color: 'primary.main', mt: 0.25 }}>{a.icon}</Box>
+            <Box sx={{ color: 'primary.main', mt: 0.25 }}>{a.icon}</Box>
               <Box>
                 <Typography variant="body2" sx={{ fontWeight: 700 }}>{a.label}</Typography>
                 <Typography variant="caption" color="text.secondary">{a.help}</Typography>
@@ -168,7 +170,7 @@ export function DashboardPage() {
             to="/whatsapp-crm/settings/account"
             sx={{ alignItems: 'flex-start', gap: 1.5, p: 2.5, bgcolor: 'action.hover', borderRadius: 2 }}
           >
-            <Box sx={{ color: 'primary.main', mt: 0.25 }}><PersonOutlined /></Box>
+            <Box sx={{ color: 'primary.main', mt: 0.25 }}><Icon icon={User} size="md" /></Box>
             <Box>
               <Typography variant="body2" sx={{ fontWeight: 700 }}>Edit User Profile</Typography>
               <Typography variant="caption" color="text.secondary">Update your name, username, and phone</Typography>
@@ -179,7 +181,7 @@ export function DashboardPage() {
             to="/whatsapp-crm/settings/account"
             sx={{ alignItems: 'flex-start', gap: 1.5, p: 2.5, bgcolor: 'action.hover', borderRadius: 2 }}
           >
-            <Box sx={{ color: 'primary.main', mt: 0.25 }}><LockOutlined /></Box>
+            <Box sx={{ color: 'primary.main', mt: 0.25 }}><Icon icon={Lock} size="md" /></Box>
             <Box>
               <Typography variant="body2" sx={{ fontWeight: 700 }}>Change Password</Typography>
               <Typography variant="caption" color="text.secondary">Update your login password</Typography>

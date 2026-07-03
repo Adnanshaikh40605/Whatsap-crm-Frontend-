@@ -1,5 +1,6 @@
 import { InputAdornment, TextField, type TextFieldProps } from '@mui/material'
-import { Search } from '@mui/icons-material'
+import { Search } from 'lucide-react'
+import { ICON, ICON_STROKE } from '../../lib/icons'
 
 type SearchFieldProps = {
   value: string
@@ -19,7 +20,7 @@ export function SearchField({ value, onChange, placeholder = 'Search…', sx, ..
         input: {
           startAdornment: (
             <InputAdornment position="start">
-              <Search fontSize="small" sx={{ color: 'text.secondary' }} />
+              <Search size={ICON.sm} strokeWidth={ICON_STROKE} style={{ color: 'inherit', opacity: 0.6 }} />
             </InputAdornment>
           ),
         },

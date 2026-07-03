@@ -4,17 +4,19 @@ import {
   Avatar, Box, Button, Chip, Dialog, DialogActions, DialogContent, DialogTitle,
   IconButton, MenuItem, Stack, Tab, Tabs, TextField, Tooltip, Typography,
 } from '@mui/material'
+import type { LucideIcon } from 'lucide-react'
 import {
-  AddBusinessOutlined, ArrowForwardOutlined, DeleteOutlined, LockOutlined, LogoutOutlined,
-  RocketLaunchOutlined, SmsOutlined, WhatsApp,
-} from '@mui/icons-material'
+  Building2, ArrowRight, Trash2, Lock, LogOut, Rocket, Smartphone, MessageCircle,
+} from 'lucide-react'
 import { useAuth, staffDefaultPath } from '../context/AuthContext'
 import { canManageProjects } from '../lib/rbac'
 import { orgApi } from '../lib/api'
 import { AppCard } from '../components/common'
 import { ConfirmDialog } from '../components/common/ConfirmDialog'
 import { buildDeleteConfirmMessage } from '../lib/deleteConfirm'
+import { ICON, ICON_STROKE } from '../lib/icons'
 import type { Organization } from '../types'
+
 
 type ProjectTab = 'whatsapp' | 'sms'
 type ProjectType = 'whatsapp' | 'sms'
@@ -224,7 +226,7 @@ export function ProjectsPage() {
       }}>
         <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center' }}>
           <Avatar sx={{ bgcolor: '#EAF7EE', color: '#31A24C', width: 34, height: 34 }}>
-            <AddBusinessOutlined />
+            <Building2 size={ICON.md} strokeWidth={ICON_STROKE} color="#31A24C" />
           </Avatar>
           <Box>
             <Typography sx={{ fontWeight: 800, lineHeight: 1 }}>Projects</Typography>
@@ -235,7 +237,7 @@ export function ProjectsPage() {
           <Avatar sx={{ width: 34, height: 34, bgcolor: 'primary.light', color: 'primary.main', fontSize: 13, fontWeight: 800 }}>
             {user?.first_name?.[0]?.toUpperCase() || user?.username?.[0]?.toUpperCase() || 'U'}
           </Avatar>
-          <Button size="small" color="inherit" startIcon={<LogoutOutlined />} onClick={() => { logout(); navigate('/login') }}>
+          <Button size="small" color="inherit" startIcon={<LogOut size={ICON.sm} strokeWidth={ICON_STROKE} />} onClick={() => { logout(); navigate('/login') }}>
             Log out
           </Button>
         </Stack>
@@ -333,7 +335,7 @@ export function ProjectsPage() {
                 bgcolor: 'rgba(255,255,255,0.66)', border: '1px solid rgba(22,76,77,0.12)',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
               }}>
-                <RocketLaunchOutlined sx={{ fontSize: 104, color: '#31A24C', transform: 'rotate(-18deg)' }} />
+                <Rocket size={104} strokeWidth={1.5} color="#31A24C" style={{ transform: 'rotate(-18deg)' }} />
               </Box>
             </Box>
           </Box>
@@ -353,15 +355,19 @@ export function ProjectsPage() {
               '& .Mui-selected': { color: '#164C4D' },
             }}
           >
-            <Tab icon={<WhatsApp />} iconPosition="start" label="WhatsApp Projects" value="whatsapp" />
-            <Tab icon={<SmsOutlined />} iconPosition="start" label="SMS Projects" value="sms" />
+            <Tab icon={<MessageCircle size={ICON.md} strokeWidth={ICON_STROKE} />} iconPosition="start" label="WhatsApp Projects" value="whatsapp" />
+            <Tab icon={<Smartphone size={ICON.md} strokeWidth={ICON_STROKE} />} iconPosition="start" label="SMS Projects" value="sms" />
           </Tabs>
         </Stack>
 
         {filteredProjects.length === 0 ? (
           <AppCard>
             <Stack spacing={1.5} sx={{ alignItems: 'center', textAlign: 'center', py: 5 }}>
-              {isSms ? <SmsOutlined color="primary" sx={{ fontSize: 48 }} /> : <WhatsApp color="primary" sx={{ fontSize: 48 }} />}
+              {isSms ? (
+                <Smartphone size={ICON.hero} strokeWidth={ICON_STROKE} color="#164C4D" />
+              ) : (
+                <MessageCircle size={ICON.hero} strokeWidth={ICON_STROKE} color="#164C4D" />
+              )}
               <Typography variant="h4">No {isSms ? 'SMS' : 'WhatsApp'} projects yet</Typography>
               <Typography variant="body2" color="text.secondary">
                 {canCreate
@@ -374,7 +380,7 @@ export function ProjectsPage() {
           <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: 'repeat(2, 1fr)', xl: 'repeat(3, 1fr)' }, gap: 2 }}>
             {filteredProjects.map((project) => {
               const status = isSms ? getSmsStatus(project) : getWhatsAppStatus(project)
-              const Icon = isSms ? SmsOutlined : WhatsApp
+              const ProjectTypeIcon: LucideIcon = isSms ? Smartphone : MessageCircle
               return (
                 <AppCard key={project.id} sx={{ borderColor: '#EEF0EE', borderRadius: 1.5, bgcolor: '#FFFFFF' }}>
                   <Stack spacing={2.5} sx={{ height: '100%' }}>
@@ -394,7 +400,7 @@ export function ProjectsPage() {
                               onClick={() => startDeleteProject(project)}
                               sx={{ color: 'error.main' }}
                             >
-                              <DeleteOutlined fontSize="small" />
+                              <Trash2 size={ICON.sm} strokeWidth={ICON_STROKE} />
                             </IconButton>
                           </Tooltip>
                         ) : null}
@@ -404,7 +410,7 @@ export function ProjectsPage() {
 
                     <Stack spacing={1.25} sx={{ flex: 1 }}>
                       <Stack direction="row" spacing={1.25} sx={{ alignItems: 'center' }}>
-                        <Icon sx={{ color: isSms ? '#44505A' : '#31A24C' }} />
+                        <ProjectTypeIcon size={ICON.md} strokeWidth={ICON_STROKE} color={isSms ? '#44505A' : '#31A24C'} />
                         <Box>
                           <Typography variant="subtitle2">{isSms ? 'SMS CRM' : 'WhatsApp CRM'}</Typography>
                           <Typography variant="body2" color="text.secondary">
@@ -414,7 +420,7 @@ export function ProjectsPage() {
                       </Stack>
                       {project.has_project_password ? (
                         <Stack direction="row" spacing={0.75} sx={{ alignItems: 'center', color: 'text.secondary' }}>
-                          <LockOutlined sx={{ fontSize: 16 }} />
+                          <Lock size={ICON.sm} strokeWidth={ICON_STROKE} />
                           <Typography variant="caption">Password protected</Typography>
                         </Stack>
                       ) : null}
@@ -422,7 +428,7 @@ export function ProjectsPage() {
 
                     <Button
                       variant="outlined"
-                      endIcon={<ArrowForwardOutlined />}
+                      endIcon={<ArrowRight size={ICON.sm} strokeWidth={ICON_STROKE} />}
                       onClick={() => viewProject(project)}
                       sx={{
                         alignSelf: 'stretch',

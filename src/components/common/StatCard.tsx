@@ -1,6 +1,7 @@
 import { Card, CardContent, Box, Typography, Stack } from '@mui/material'
-import { TrendingUp, TrendingDown, TrendingFlat } from '@mui/icons-material'
+import { TrendingUp, TrendingDown, Minus } from 'lucide-react'
 import type { ReactNode } from 'react'
+import { ICON, ICON_STROKE } from '../../lib/icons'
 
 interface StatCardProps {
   label: string
@@ -13,7 +14,7 @@ interface StatCardProps {
 
 export function StatCard({ label, value, delta, trend = 'neutral', icon, caption }: StatCardProps) {
   const color = trend === 'up' ? 'success.main' : trend === 'down' ? 'error.main' : 'text.secondary'
-  const TrendIcon = trend === 'up' ? TrendingUp : trend === 'down' ? TrendingDown : TrendingFlat
+  const TrendIcon = trend === 'up' ? TrendingUp : trend === 'down' ? TrendingDown : Minus
   return (
     <Card sx={{ height: '100%' }}>
       <CardContent>
@@ -31,7 +32,9 @@ export function StatCard({ label, value, delta, trend = 'neutral', icon, caption
           <Stack direction="row" spacing={0.5} sx={{ alignItems: 'center', mt: 1 }}>
             {delta !== undefined ? (
               <>
-                <TrendIcon sx={{ fontSize: 16, color }} />
+                <Box component="span" sx={{ color, display: 'inline-flex' }}>
+                  <TrendIcon size={ICON.sm} strokeWidth={ICON_STROKE} />
+                </Box>
                 <Typography variant="caption" sx={{ color, fontWeight: 600 }}>{delta}</Typography>
               </>
             ) : null}

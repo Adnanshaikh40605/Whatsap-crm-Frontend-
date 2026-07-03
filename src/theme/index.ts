@@ -1,4 +1,5 @@
 import { createTheme, type Theme } from '@mui/material/styles'
+import { FONT_FAMILY } from '../lib/fonts'
 
 const e1 = 'none'
 const e2 = 'rgba(20, 22, 26, 0.3) 0px 1px 4px 0px'
@@ -47,9 +48,9 @@ export function getTheme(mode: 'light' | 'dark'): Theme {
     shape: { borderRadius: 16 },
     spacing: 8,
     typography: {
-      fontFamily: '"Optimistic VF", Montserrat, Helvetica, Arial, "Noto Sans", sans-serif',
-      h1: { fontSize: 36, lineHeight: '46px', fontWeight: 500, letterSpacing: 0, fontFeatureSettings: '"ss01", "ss02"' },
-      h2: { fontSize: 28, lineHeight: '34px', fontWeight: 500, letterSpacing: 0, fontFeatureSettings: '"ss01", "ss02"' },
+      fontFamily: FONT_FAMILY,
+      h1: { fontSize: 36, lineHeight: '46px', fontWeight: 600, letterSpacing: '-0.02em' },
+      h2: { fontSize: 28, lineHeight: '34px', fontWeight: 600, letterSpacing: '-0.02em' },
       h3: { fontSize: 24, lineHeight: '30px', fontWeight: 500, letterSpacing: 0 },
       h4: { fontSize: 18, lineHeight: '26px', fontWeight: 700, letterSpacing: 0 },
       h5: { fontSize: 16, lineHeight: '24px', fontWeight: 700, letterSpacing: '-0.16px' },
@@ -63,6 +64,13 @@ export function getTheme(mode: 'light' | 'dark'): Theme {
     },
     shadows,
     components: {
+      MuiCssBaseline: {
+        styleOverrides: {
+          html: { fontFamily: FONT_FAMILY },
+          body: { fontFamily: FONT_FAMILY },
+          '#root': { fontFamily: FONT_FAMILY },
+        },
+      },
       MuiButton: {
         defaultProps: { disableElevation: true },
         styleOverrides: {

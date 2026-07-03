@@ -5,10 +5,12 @@ import {
   Alert, Box, Button, Chip, Dialog, DialogActions, DialogContent, DialogTitle,
   Divider, Stack, Step, StepLabel, Stepper, TextField, Typography,
 } from '@mui/material'
-import { WhatsApp, CheckCircle, Bolt, VerifiedUser, MenuBookOutlined } from '@mui/icons-material'
+import { MessageCircle, CheckCircle, Zap, BadgeCheck, BookOpen } from 'lucide-react'
 import { onboardingApi } from '../lib/api'
 import { useAuth } from '../context/AuthContext'
 import { PageHeader, AppCard, useToast } from '../components/common'
+import { Icon } from '../components/ui/Icon'
+import { ICON } from '../lib/icons'
 import type { AxiosError } from 'axios'
 
 const STEPS = ['Authorize with Meta', 'Select number', 'Verify business', 'Go live']
@@ -50,7 +52,7 @@ export function QRCodePage() {
           </span>
         }
         actions={
-          <Button component={RouterLink} to="/whatsapp-crm/setup-guide" variant="outlined" startIcon={<MenuBookOutlined />}>
+          <Button component={RouterLink} to="/whatsapp-crm/setup-guide" variant="outlined" startIcon={<Icon icon={BookOpen} size="sm" />}>
             View setup guide
           </Button>
         }
@@ -65,7 +67,7 @@ export function QRCodePage() {
                 <Box sx={{ width: 56, height: 56, borderRadius: 3, display: 'grid', placeItems: 'center',
                   bgcolor: connected ? 'success.light' : 'action.hover',
                   color: connected ? 'success.main' : 'text.secondary' }}>
-                  <WhatsApp sx={{ fontSize: 30 }} />
+                  <MessageCircle size={ICON.xl} strokeWidth={1.75} />
                 </Box>
                 <Box>
                   <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
@@ -89,9 +91,9 @@ export function QRCodePage() {
 
               <Stack direction="row" spacing={1.5}>
                 {connected ? (
-                  <Button variant="outlined" startIcon={<CheckCircle />} disabled>Connected</Button>
+                  <Button variant="outlined" startIcon={<CheckCircle size={ICON.sm} strokeWidth={1.75} />} disabled>Connected</Button>
                 ) : (
-                  <Button variant="contained" startIcon={<WhatsApp />} onClick={() => setOpen(true)}>
+                  <Button variant="contained" startIcon={<Icon icon={MessageCircle} size="sm" />} onClick={() => setOpen(true)}>
                     Connect WhatsApp
                   </Button>
                 )}
@@ -103,9 +105,9 @@ export function QRCodePage() {
           <AppCard title="What you'll need">
             <Stack spacing={2}>
               {[
-                { icon: <Bolt color="primary" />, t: 'Meta Business account', d: 'Admin access to your Meta Business Manager.' },
-                { icon: <VerifiedUser color="primary" />, t: 'Business verification', d: 'Required by Meta before higher messaging limits.' },
-                { icon: <WhatsApp color="primary" />, t: 'A phone number', d: 'Not currently active on a personal WhatsApp app.' },
+                { icon: <Icon icon={Zap} size="md" />, t: 'Meta Business account', d: 'Admin access to your Meta Business Manager.' },
+                { icon: <Icon icon={BadgeCheck} size="md" />, t: 'Business verification', d: 'Required by Meta before higher messaging limits.' },
+                { icon: <Icon icon={MessageCircle} size="md" />, t: 'A phone number', d: 'Not currently active on a personal WhatsApp app.' },
               ].map((i) => (
                 <Stack key={i.t} direction="row" spacing={1.5}>
                   <Box sx={{ mt: 0.25 }}>{i.icon}</Box>
@@ -135,7 +137,7 @@ export function QRCodePage() {
             </Box>
             <Box sx={{ width: { xs: '100%', md: '50%' }, p: { xs: 4, md: 6 }, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
               <Box sx={{ bgcolor: '#25D366', width: 48, height: 48, borderRadius: 2, display: 'flex', alignItems: 'center', justifyContent: 'center', mb: 3 }}>
-                <WhatsApp sx={{ color: 'white', fontSize: 32 }} />
+                <MessageCircle size={ICON.xl} strokeWidth={1.75} color="#fff" />
               </Box>
               <Typography variant="h5" sx={{ fontWeight: 700, mb: 1.5, color: 'text.primary' }}>
                 WhatsApp Business API
@@ -166,7 +168,7 @@ export function QRCodePage() {
                 component={RouterLink}
                 to="/whatsapp-crm/setup-guide"
                 variant="outlined"
-                startIcon={<MenuBookOutlined />}
+                startIcon={<Icon icon={BookOpen} size="sm" />}
               >
                 Read guide
               </Button>
@@ -185,7 +187,7 @@ export function QRCodePage() {
               Embedded Signup with Meta is the recommended path. If you already have a WABA, enter its
               IDs below to link it directly via the Cloud API.
             </Alert>
-            <Button variant="contained" startIcon={<WhatsApp />} fullWidth disabled>
+            <Button variant="contained" startIcon={<Icon icon={MessageCircle} size="sm" />} fullWidth disabled>
               Continue with Meta (Embedded Signup)
             </Button>
             <Divider>or link manually</Divider>

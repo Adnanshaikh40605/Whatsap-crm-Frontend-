@@ -4,10 +4,11 @@ import {
   Avatar, Box, Button, Chip, Dialog, DialogActions, DialogContent, DialogTitle,
   MenuItem, Stack, TextField, Typography,
 } from '@mui/material'
-import { PersonAddAlt1 } from '@mui/icons-material'
+import { UserPlus } from 'lucide-react'
 import { orgApi, coreApi } from '../lib/api'
 import { useAuth } from '../context/AuthContext'
 import { PageHeader, DataTable, StatusChip, AppCard, useToast, type GridColDef } from '../components/common'
+import { Icon } from '../components/ui/Icon'
 import type { AxiosError } from 'axios'
 
 
@@ -94,7 +95,7 @@ export function TeamPage() {
         title="Team Members"
         subtitle="Manage agents, managers, and role-based access"
         actions={
-          <Button variant="contained" startIcon={<PersonAddAlt1 />} onClick={() => setOpen(true)}>
+          <Button variant="contained" startIcon={<Icon icon={UserPlus} size="sm" />} onClick={() => setOpen(true)}>
             Invite member
           </Button>
         }
@@ -109,7 +110,7 @@ export function TeamPage() {
           height={520}
           emptyTitle="No team members yet"
           emptyDescription="Invite colleagues to collaborate in the shared inbox and CRM."
-          emptyAction={<Button variant="contained" startIcon={<PersonAddAlt1 />} onClick={() => setOpen(true)}>Invite member</Button>}
+          emptyAction={<Button variant="contained" startIcon={<Icon icon={UserPlus} size="sm" />} onClick={() => setOpen(true)}>Invite member</Button>}
         />
       </AppCard>
 

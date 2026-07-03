@@ -1,12 +1,13 @@
 import { useEffect, useState } from 'react'
 import { useMutation } from '@tanstack/react-query'
 import { Stack, TextField, Typography } from '@mui/material'
-import { PersonOutlined, LockOutlined } from '@mui/icons-material'
+import { User, Lock } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
 import { authApi } from '../../lib/api'
 import { AppCard } from '../common'
 import { Button } from '../ui/Button'
 import { useToast } from '../common'
+import { Icon } from '../ui/Icon'
 
 export function AccountSettingsPanel() {
   const { user, refreshUser } = useAuth()
@@ -67,7 +68,7 @@ export function AccountSettingsPanel() {
     <Stack spacing={3}>
       <AppCard>
         <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center', mb: 2 }}>
-          <PersonOutlined color="primary" />
+          <Icon icon={User} size="lg" color="var(--accent, #164C4D)" />
           <Typography variant="h4" sx={{ fontWeight: 700 }}>Edit User Profile</Typography>
         </Stack>
         <Stack spacing={2} component="form" onSubmit={(e) => { e.preventDefault(); profileMutation.mutate() }}>
@@ -104,7 +105,7 @@ export function AccountSettingsPanel() {
 
       <AppCard>
         <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center', mb: 2 }}>
-          <LockOutlined color="primary" />
+          <Icon icon={Lock} size="lg" color="var(--accent, #164C4D)" />
           <Typography variant="h4" sx={{ fontWeight: 700 }}>Change Password</Typography>
         </Stack>
         <Stack spacing={2} component="form" onSubmit={submitPassword}>

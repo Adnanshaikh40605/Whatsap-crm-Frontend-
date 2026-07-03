@@ -1,93 +1,96 @@
-import { useState, useEffect, type ComponentType } from 'react'
+import { useState, useEffect } from 'react'
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import {
   AppBar, Avatar, Box, Divider, Drawer, IconButton, List, ListItemButton, ListItemIcon,
   ListItemText, Menu, MenuItem, Toolbar, Tooltip, Typography, ListSubheader, useMediaQuery,
 } from '@mui/material'
 import { useTheme } from '@mui/material/styles'
+import type { LucideIcon } from 'lucide-react'
 import {
-  SpaceDashboardOutlined, ForumOutlined, DescriptionOutlined, AssessmentOutlined,
-  CampaignOutlined, SettingsOutlined, DnsOutlined,
-  BusinessOutlined, Menu as MenuIcon, LightModeOutlined,
-  DarkModeOutlined, UnfoldMore, Check, Logout, WhatsApp, GroupsOutlined,
-  PermMediaOutlined, MenuBookOutlined, SmsOutlined, AccountTreeOutlined, FolderOutlined,
-  StoreOutlined, PersonOutlined,
-} from '@mui/icons-material'
+  LayoutDashboard, MessagesSquare, FileText, BarChart2, Megaphone, Settings, Server,
+  Building2, Menu as MenuIcon, Sun, Moon, ChevronsUpDown, Check, LogOut, MessageCircle, Users,
+  Image, BookOpen, Smartphone, GitBranch, Folder, Store, User,
+} from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
 import { useTheme as useColorMode } from '../../context/ThemeContext'
 import { canAccessModule } from '../../lib/rbac'
 import { getApiOrigin } from '../../lib/config'
+import { ICON, ICON_STROKE } from '../../lib/icons'
 
 const DRAWER_WIDTH = 260
 const API_ORIGIN = getApiOrigin()
 
-type NavItem = { to: string; icon: ComponentType; label: string; end?: boolean }
+type NavItem = { to: string; icon: LucideIcon; label: string; end?: boolean }
 type NavSection = { label: string; items: NavItem[] }
+
+function NavIcon({ icon: LucideComponent }: { icon: LucideIcon }) {
+  return <LucideComponent size={ICON.md} strokeWidth={ICON_STROKE} />
+}
 
 const PROJECT_NAV_SECTIONS: NavSection[] = [
   { label: 'Overview', items: [
-    { to: '/projects', icon: FolderOutlined, label: 'Projects' },
+    { to: '/projects', icon: Folder, label: 'Projects' },
   ] },
 ]
 
 const WHATSAPP_NAV_SECTIONS: NavSection[] = [
   { label: 'Overview', items: [
-    { to: '/projects', icon: FolderOutlined, label: 'Projects' },
-    { to: '/whatsapp-crm/dashboard', icon: SpaceDashboardOutlined, label: 'Dashboard' },
+    { to: '/projects', icon: Folder, label: 'Projects' },
+    { to: '/whatsapp-crm/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
   ] },
   { label: 'Messaging', items: [
-    { to: '/whatsapp-crm/inbox', icon: ForumOutlined, label: 'Inbox' },
-    { to: '/whatsapp-crm/templates', icon: DescriptionOutlined, label: 'Templates' },
-    { to: '/whatsapp-crm/contacts', icon: GroupsOutlined, label: 'Contacts' },
-    { to: '/whatsapp-crm/contact-groups', icon: AccountTreeOutlined, label: 'Contact Groups' },
-    { to: '/whatsapp-crm/message-logs', icon: DnsOutlined, label: 'Message Logs' },
-    { to: '/whatsapp-crm/media', icon: PermMediaOutlined, label: 'Media' },
+    { to: '/whatsapp-crm/inbox', icon: MessagesSquare, label: 'Inbox' },
+    { to: '/whatsapp-crm/templates', icon: FileText, label: 'Templates' },
+    { to: '/whatsapp-crm/contacts', icon: Users, label: 'Contacts' },
+    { to: '/whatsapp-crm/contact-groups', icon: GitBranch, label: 'Contact Groups' },
+    { to: '/whatsapp-crm/message-logs', icon: Server, label: 'Message Logs' },
+    { to: '/whatsapp-crm/media', icon: Image, label: 'Media' },
   ] },
   { label: 'Growth', items: [
-    { to: '/whatsapp-crm/campaigns', icon: CampaignOutlined, label: 'Campaigns' },
+    { to: '/whatsapp-crm/campaigns', icon: Megaphone, label: 'Campaigns' },
   ] },
   { label: 'Admin', items: [
-    { to: '/whatsapp-crm/api-settings', icon: WhatsApp, label: 'API Settings' },
-    { to: '/whatsapp-crm/business-profile', icon: StoreOutlined, label: 'Business Profile' },
-    { to: '/whatsapp-crm/setup-guide', icon: MenuBookOutlined, label: 'Setup Guide' },
-    { to: '/whatsapp-crm/settings', icon: SettingsOutlined, label: 'Settings' },
+    { to: '/whatsapp-crm/api-settings', icon: MessageCircle, label: 'API Settings' },
+    { to: '/whatsapp-crm/business-profile', icon: Store, label: 'Business Profile' },
+    { to: '/whatsapp-crm/setup-guide', icon: BookOpen, label: 'Setup Guide' },
+    { to: '/whatsapp-crm/settings', icon: Settings, label: 'Settings' },
   ] },
 ]
 
 const SMS_NAV_SECTIONS: NavSection[] = [
   { label: 'Overview', items: [
-    { to: '/projects', icon: FolderOutlined, label: 'Projects' },
-    { to: '/sms-crm/dashboard', icon: SpaceDashboardOutlined, label: 'Dashboard' },
+    { to: '/projects', icon: Folder, label: 'Projects' },
+    { to: '/sms-crm/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
   ] },
   { label: 'Messaging', items: [
-    { to: '/sms-crm/templates', icon: DescriptionOutlined, label: 'SMS Templates' },
-    { to: '/sms-crm/campaigns', icon: CampaignOutlined, label: 'Bulk SMS Campaigns' },
-    { to: '/sms-crm/contacts', icon: GroupsOutlined, label: 'Contacts' },
-    { to: '/sms-crm/contact-groups', icon: AccountTreeOutlined, label: 'Contact Groups' },
-    { to: '/sms-crm/sender-ids', icon: SmsOutlined, label: 'Sender IDs' },
-    { to: '/sms-crm/message-logs', icon: DnsOutlined, label: 'Message Logs' },
+    { to: '/sms-crm/templates', icon: FileText, label: 'SMS Templates' },
+    { to: '/sms-crm/campaigns', icon: Megaphone, label: 'Bulk SMS Campaigns' },
+    { to: '/sms-crm/contacts', icon: Users, label: 'Contacts' },
+    { to: '/sms-crm/contact-groups', icon: GitBranch, label: 'Contact Groups' },
+    { to: '/sms-crm/sender-ids', icon: Smartphone, label: 'Sender IDs' },
+    { to: '/sms-crm/message-logs', icon: Server, label: 'Message Logs' },
   ] },
   { label: 'Admin', items: [
-    { to: '/sms-crm/api-settings', icon: SettingsOutlined, label: 'API Settings' },
-    { to: '/sms-crm/reports', icon: AssessmentOutlined, label: 'Reports' },
+    { to: '/sms-crm/api-settings', icon: Settings, label: 'API Settings' },
+    { to: '/sms-crm/reports', icon: BarChart2, label: 'Reports' },
   ] },
 ]
 
 const STAFF_WHATSAPP_NAV: NavSection[] = [
   { label: 'Overview', items: [
-    { to: '/projects', icon: FolderOutlined, label: 'Projects' },
+    { to: '/projects', icon: Folder, label: 'Projects' },
   ] },
   { label: 'Messaging', items: [
-    { to: '/whatsapp-crm/inbox', icon: ForumOutlined, label: 'Inbox' },
+    { to: '/whatsapp-crm/inbox', icon: MessagesSquare, label: 'Inbox' },
   ] },
 ]
 
 const STAFF_SMS_NAV: NavSection[] = [
   { label: 'Overview', items: [
-    { to: '/projects', icon: FolderOutlined, label: 'Projects' },
+    { to: '/projects', icon: Folder, label: 'Projects' },
   ] },
   { label: 'Messaging', items: [
-    { to: '/sms-crm/send', icon: SmsOutlined, label: 'Send SMS' },
+    { to: '/sms-crm/send', icon: Smartphone, label: 'Send SMS' },
   ] },
 ]
 
@@ -142,38 +145,40 @@ export function AppShell() {
 
   const handleLogout = () => { logout(); navigate('/login') }
 
-  const navItem = (item: NavItem) => {
-    const Icon = item.icon
-    return (
-      <ListItemButton
-        key={item.to}
-        component={NavLink}
-        to={item.to}
-        end={item.end}
-        onClick={() => setMobileOpen(false)}
-        sx={{
-          px: 1.5, py: 1, mb: 0.25,
-          color: 'text.secondary',
-          '&.active': {
-            bgcolor: '#0A1317', color: '#ffffff',
-            '& .MuiListItemIcon-root': { color: '#ffffff' },
-            fontWeight: 600,
-          },
-          '&:hover': { bgcolor: 'action.hover' },
-        }}
-      >
-        <ListItemIcon sx={{ minWidth: 34, color: 'text.secondary' }}><Icon /></ListItemIcon>
-        <ListItemText slotProps={{ primary: { sx: { fontSize: 14, fontWeight: 500 } } }}>{item.label}</ListItemText>
-      </ListItemButton>
-    )
-  }
+  const navItem = (item: NavItem) => (
+    <ListItemButton
+      key={item.to}
+      component={NavLink}
+      to={item.to}
+      end={item.end}
+      onClick={() => setMobileOpen(false)}
+      sx={{
+        px: 1.5, py: 1, mb: 0.25,
+        color: 'text.secondary',
+        '&.active': {
+          bgcolor: '#0A1317', color: '#ffffff',
+          '& .MuiListItemIcon-root': { color: '#ffffff' },
+          fontWeight: 600,
+        },
+        '&:hover': { bgcolor: 'action.hover' },
+      }}
+    >
+      <ListItemIcon sx={{ minWidth: 34, color: 'text.secondary' }}>
+        <NavIcon icon={item.icon} />
+      </ListItemIcon>
+      <ListItemText slotProps={{ primary: { sx: { fontSize: 14, fontWeight: 500 } } }}>{item.label}</ListItemText>
+    </ListItemButton>
+  )
 
   const drawer = (
     <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column', bgcolor: 'background.paper' }}>
-      {/* Brand */}
       <Box sx={{ height: 72, display: 'flex', alignItems: 'center', gap: 1.25, px: 2.5, flexShrink: 0 }}>
         <Avatar onClick={() => navigate('/projects')} sx={{ bgcolor: 'primary.main', width: 36, height: 36, cursor: 'pointer' }}>
-          {logoSrc ? <Box component="img" src={logoSrc} alt="" sx={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <WhatsApp sx={{ fontSize: 18 }} />}
+          {logoSrc ? (
+            <Box component="img" src={logoSrc} alt="" sx={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+          ) : (
+            <MessageCircle size={ICON.sm} strokeWidth={ICON_STROKE} color="#fff" />
+          )}
         </Avatar>
         <Box onClick={() => navigate('/projects')} sx={{ cursor: 'pointer' }}>
           <Typography sx={{ fontWeight: 700, fontSize: 16, lineHeight: 1.1 }}>{brandName}</Typography>
@@ -182,7 +187,6 @@ export function AppShell() {
       </Box>
       <Divider />
 
-      {/* Nav */}
       <Box sx={{ flex: 1, overflowY: 'auto', px: 1.5, py: 1.5 }}>
         {navSections.map((section) => (
           <List
@@ -203,7 +207,6 @@ export function AppShell() {
         ))}
       </Box>
 
-      {/* User footer */}
       <Divider />
       <Box sx={{ p: 1.5, flexShrink: 0 }}>
         <ListItemButton onClick={(e) => setUserAnchor(e.currentTarget)} sx={{ px: 1, py: 1 }}>
@@ -218,7 +221,7 @@ export function AppShell() {
               secondary: { noWrap: true, sx: { fontSize: 11 } },
             }}
           />
-          <UnfoldMore fontSize="small" sx={{ color: 'text.disabled' }} />
+          <ChevronsUpDown size={ICON.sm} strokeWidth={ICON_STROKE} color={theme.palette.text.disabled} />
         </ListItemButton>
       </Box>
     </Box>
@@ -226,7 +229,6 @@ export function AppShell() {
 
   return (
     <Box sx={{ display: 'flex', height: '100vh', overflow: 'hidden' }}>
-      {/* Sidebar */}
       <Box component="nav" sx={{ width: { lg: DRAWER_WIDTH }, flexShrink: { lg: 0 } }}>
         <Drawer
           variant={isDesktop ? 'permanent' : 'temporary'}
@@ -244,7 +246,6 @@ export function AppShell() {
         </Drawer>
       </Box>
 
-      {/* Main column */}
       <Box sx={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column' }}>
         <AppBar
           position="static"
@@ -253,7 +254,9 @@ export function AppShell() {
         >
           <Toolbar sx={{ minHeight: 72, gap: 1, px: { xs: 2, lg: 4 } }}>
             {!isDesktop && (
-              <IconButton edge="start" onClick={() => setMobileOpen(true)}><MenuIcon /></IconButton>
+              <IconButton edge="start" onClick={() => setMobileOpen(true)} aria-label="Open menu">
+                <MenuIcon size={ICON.lg} strokeWidth={ICON_STROKE} />
+              </IconButton>
             )}
             <Box sx={{ flex: 1, minWidth: 0 }}>
               <Typography variant="body2" color="text.secondary" noWrap>
@@ -262,17 +265,21 @@ export function AppShell() {
             </Box>
 
             <Tooltip title={mode === 'dark' ? 'Light mode' : 'Dark mode'}>
-              <IconButton onClick={toggleTheme}>
-                {mode === 'dark' ? <LightModeOutlined /> : <DarkModeOutlined />}
+              <IconButton onClick={toggleTheme} aria-label="Toggle theme">
+                {mode === 'dark' ? (
+                  <Sun size={ICON.md} strokeWidth={ICON_STROKE} />
+                ) : (
+                  <Moon size={ICON.md} strokeWidth={ICON_STROKE} />
+                )}
               </IconButton>
             </Tooltip>
 
             <IconButton onClick={(e) => setOrgAnchor(e.currentTarget)} sx={{ borderRadius: 100, px: 2, gap: 0.75, border: '1px solid', borderColor: 'divider' }}>
-              <BusinessOutlined fontSize="small" sx={{ color: 'text.secondary' }} />
+              <Building2 size={ICON.sm} strokeWidth={ICON_STROKE} color={theme.palette.text.secondary} />
               <Typography variant="body2" noWrap sx={{ fontWeight: 600, maxWidth: 120, display: { xs: 'none', sm: 'block' } }}>
                 {organization?.name}
               </Typography>
-              <UnfoldMore fontSize="small" sx={{ color: 'text.disabled' }} />
+              <ChevronsUpDown size={ICON.sm} strokeWidth={ICON_STROKE} color={theme.palette.text.disabled} />
             </IconButton>
           </Toolbar>
         </AppBar>
@@ -282,7 +289,6 @@ export function AppShell() {
         </Box>
       </Box>
 
-      {/* Org switcher menu */}
       <Menu anchorEl={orgAnchor} open={Boolean(orgAnchor)} onClose={() => setOrgAnchor(null)}>
         <Typography variant="caption" color="text.secondary" sx={{ px: 2, py: 0.5, display: 'block', fontWeight: 700 }}>
           Switch company
@@ -302,28 +308,29 @@ export function AppShell() {
               }
             }}>
             <ListItemText>{org.name}</ListItemText>
-            {org.id === organization?.id && <Check fontSize="small" color="primary" sx={{ ml: 2 }} />}
+            {org.id === organization?.id && (
+              <Check size={ICON.sm} strokeWidth={ICON_STROKE} color={theme.palette.primary.main} style={{ marginLeft: 16 }} />
+            )}
           </MenuItem>
         ))}
         <Divider />
         <MenuItem onClick={() => { setOrgAnchor(null); navigate('/projects') }}>
-          <ListItemIcon><BusinessOutlined fontSize="small" /></ListItemIcon> Projects
+          <ListItemIcon><Building2 size={ICON.sm} strokeWidth={ICON_STROKE} /></ListItemIcon> Projects
         </MenuItem>
       </Menu>
 
-      {/* User menu */}
       <Menu anchorEl={userAnchor} open={Boolean(userAnchor)} onClose={() => setUserAnchor(null)}>
         <MenuItem onClick={() => { setUserAnchor(null); navigate('/whatsapp-crm/settings/account') }}>
-          <ListItemIcon><PersonOutlined fontSize="small" /></ListItemIcon> Account Settings
+          <ListItemIcon><User size={ICON.sm} strokeWidth={ICON_STROKE} /></ListItemIcon> Account Settings
         </MenuItem>
         {canAccessModule(user, 'settings') ? (
           <MenuItem onClick={() => { setUserAnchor(null); navigate('/whatsapp-crm/settings') }}>
-            <ListItemIcon><SettingsOutlined fontSize="small" /></ListItemIcon> Project Settings
+            <ListItemIcon><Settings size={ICON.sm} strokeWidth={ICON_STROKE} /></ListItemIcon> Project Settings
           </MenuItem>
         ) : null}
         <Divider />
         <MenuItem onClick={handleLogout} sx={{ color: 'error.main' }}>
-          <ListItemIcon><Logout fontSize="small" sx={{ color: 'error.main' }} /></ListItemIcon> Log out
+          <ListItemIcon><LogOut size={ICON.sm} strokeWidth={ICON_STROKE} color={theme.palette.error.main} /></ListItemIcon> Log out
         </MenuItem>
       </Menu>
     </Box>

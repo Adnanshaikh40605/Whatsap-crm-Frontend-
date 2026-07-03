@@ -3,10 +3,11 @@ import {
   Alert, Box, Button, List, ListItem, ListItemIcon, ListItemText, Stack, Typography,
 } from '@mui/material'
 import {
-  CheckCircleOutlined, DnsOutlined, FactCheckOutlined, KeyOutlined,
-  SendToMobileOutlined, SmsOutlined, VerifiedUserOutlined,
-} from '@mui/icons-material'
+  CheckCircle, Server, ClipboardCheck, Key, Send, MessageSquare, BadgeCheck,
+} from 'lucide-react'
 import { PageHeader, AppCard, StatCard } from '../components/common'
+import { Icon } from '../components/ui/Icon'
+import { ICON, ICON_STROKE } from '../lib/icons'
 
 const dltSteps = [
   {
@@ -57,10 +58,10 @@ export function SmsDashboardPage() {
       </Alert>
 
       <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)', xl: 'repeat(4, 1fr)' }, gap: 2, mb: 3 }}>
-        <StatCard label="Connection" value="Setup Required" caption="Smartping/API provider" icon={<KeyOutlined />} />
-        <StatCard label="Sender IDs" value="0" caption="DLT approved headers" icon={<VerifiedUserOutlined />} />
-        <StatCard label="Templates" value="0" caption="registered SMS templates" icon={<SmsOutlined />} />
-        <StatCard label="Campaigns" value="0" caption="bulk SMS campaigns" icon={<SendToMobileOutlined />} />
+        <StatCard label="Connection" value="Setup Required" caption="Smartping/API provider" icon={<Icon icon={Key} size="md" />} />
+        <StatCard label="Sender IDs" value="0" caption="DLT approved headers" icon={<Icon icon={BadgeCheck} size="md" />} />
+        <StatCard label="Templates" value="0" caption="registered SMS templates" icon={<Icon icon={MessageSquare} size="md" />} />
+        <StatCard label="Campaigns" value="0" caption="bulk SMS campaigns" icon={<Icon icon={Send} size="md" />} />
       </Box>
 
       <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', lg: '1.4fr 1fr' }, gap: 3 }}>
@@ -81,7 +82,7 @@ export function SmsDashboardPage() {
               {smartpingChecklist.map((item) => (
                 <ListItem key={item} disableGutters>
                   <ListItemIcon sx={{ minWidth: 30 }}>
-                    <CheckCircleOutlined color="success" fontSize="small" />
+                    <CheckCircle size={ICON.sm} strokeWidth={ICON_STROKE} color="#16a34a" />
                   </ListItemIcon>
                   <ListItemText primary={item} slotProps={{ primary: { variant: 'body2' } }} />
                 </ListItem>
@@ -92,11 +93,11 @@ export function SmsDashboardPage() {
           <AppCard title="Quick actions">
             <Stack spacing={1.25}>
               {[
-                { to: '/sms-crm/sender-ids', label: 'Add Sender ID', icon: <VerifiedUserOutlined /> },
-                { to: '/sms-crm/templates', label: 'Create SMS Template', icon: <SmsOutlined /> },
-                { to: '/sms-crm/send', label: 'Send Test SMS', icon: <SendToMobileOutlined /> },
-                { to: '/sms-crm/message-logs', label: 'Open Message Logs', icon: <DnsOutlined /> },
-                { to: '/sms-crm/reports', label: 'View Reports', icon: <FactCheckOutlined /> },
+                { to: '/sms-crm/sender-ids', label: 'Add Sender ID', icon: <Icon icon={BadgeCheck} size="sm" /> },
+                { to: '/sms-crm/templates', label: 'Create SMS Template', icon: <Icon icon={MessageSquare} size="sm" /> },
+                { to: '/sms-crm/send', label: 'Send Test SMS', icon: <Icon icon={Send} size="sm" /> },
+                { to: '/sms-crm/message-logs', label: 'Open Message Logs', icon: <Icon icon={Server} size="sm" /> },
+                { to: '/sms-crm/reports', label: 'View Reports', icon: <Icon icon={ClipboardCheck} size="sm" /> },
               ].map((action) => (
                 <Button
                   key={action.to}

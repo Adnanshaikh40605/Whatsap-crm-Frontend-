@@ -4,13 +4,13 @@ import {
   ListItemText, Stack, Typography,
 } from '@mui/material'
 import {
-  AccountTreeOutlined, CheckCircleOutlined, CloudDoneOutlined, ContentCopyOutlined,
-  DescriptionOutlined, FactCheckOutlined, KeyOutlined, LaunchOutlined,
-  PhoneIphoneOutlined, SecurityOutlined, SettingsInputComponentOutlined,
-  SyncOutlined, WebhookOutlined,
-} from '@mui/icons-material'
+  GitBranch, CheckCircle, CloudCheck, Copy, FileText, ClipboardCheck, Key, ExternalLink,
+  Smartphone, Shield, SlidersHorizontal, RefreshCw, Webhook,
+} from 'lucide-react'
 import { PageHeader, AppCard } from '../components/common'
 import { useAuth } from '../context/AuthContext'
+import { Icon } from '../components/ui/Icon'
+import { ICON, ICON_STROKE } from '../lib/icons'
 
 const metaLinks = [
   ['Cloud API setup', 'https://developers.facebook.com/docs/whatsapp/cloud-api/get-started'],
@@ -23,7 +23,7 @@ const metaLinks = [
 const setupSteps = [
   {
     title: '1. Create or open Meta app',
-    icon: AccountTreeOutlined,
+    icon: GitBranch,
     items: [
       'Go to Meta for Developers.',
       'Open your business app, or create a new app for WhatsApp.',
@@ -33,7 +33,7 @@ const setupSteps = [
   },
   {
     title: '2. Add WhatsApp Business account and number',
-    icon: PhoneIphoneOutlined,
+    icon: Smartphone,
     items: [
       'In Meta App Dashboard, open WhatsApp > API setup.',
       'Select or create the WhatsApp Business Account.',
@@ -43,7 +43,7 @@ const setupSteps = [
   },
   {
     title: '3. Create permanent access token',
-    icon: KeyOutlined,
+    icon: Key,
     items: [
       'Go to Meta Business Settings > Users > System users.',
       'Create a system user or open an existing admin system user.',
@@ -54,7 +54,7 @@ const setupSteps = [
   },
   {
     title: '4. Connect inside WhatsFlow CRM',
-    icon: SettingsInputComponentOutlined,
+    icon: SlidersHorizontal,
     items: [
       'Open the correct company from the top-right company switcher.',
       'Go to Admin > WhatsApp.',
@@ -65,7 +65,7 @@ const setupSteps = [
   },
   {
     title: '5. Configure webhook for production status',
-    icon: WebhookOutlined,
+    icon: Webhook,
     items: [
       'Expose backend on HTTPS in production. For local testing, use ngrok or another tunnel.',
       'Meta callback URL should point to /api/v1/onboarding/webhooks/whatsapp/.',
@@ -76,7 +76,7 @@ const setupSteps = [
   },
   {
     title: '6. Sync templates and send campaigns',
-    icon: DescriptionOutlined,
+    icon: FileText,
     items: [
       'Go to Templates and click Sync from Meta.',
       'Create Marketing, Utility, Authentication, media, carousel, image, video, or document templates.',
@@ -95,11 +95,11 @@ const checks = [
 ]
 
 const pendingHelp = [
-  { title: 'Missing token', icon: KeyOutlined, detail: 'Add the permanent access token in WhatsApp setup.' },
-  { title: 'Wrong company', icon: SyncOutlined, detail: 'Use the top-right switcher and connect the correct workspace.' },
-  { title: 'Webhook not live', icon: WebhookOutlined, detail: 'Use an HTTPS production URL or tunnel for local testing.' },
-  { title: 'Permission issue', icon: SecurityOutlined, detail: 'Regenerate token with WhatsApp messaging and management permissions.' },
-  { title: 'Template not approved', icon: CloudDoneOutlined, detail: 'Wait for Meta approval, then Sync from Meta.' },
+  { title: 'Missing token', icon: Key, detail: 'Add the permanent access token in WhatsApp setup.' },
+  { title: 'Wrong company', icon: RefreshCw, detail: 'Use the top-right switcher and connect the correct workspace.' },
+  { title: 'Webhook not live', icon: Webhook, detail: 'Use an HTTPS production URL or tunnel for local testing.' },
+  { title: 'Permission issue', icon: Shield, detail: 'Regenerate token with WhatsApp messaging and management permissions.' },
+  { title: 'Template not approved', icon: CloudCheck, detail: 'Wait for Meta approval, then Sync from Meta.' },
 ]
 
 export function WhatsAppApiGuidePage() {
@@ -151,7 +151,7 @@ export function WhatsAppApiGuidePage() {
       <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', lg: '2fr 1fr' }, gap: 3 }}>
         <Stack spacing={2}>
           {setupSteps.map((step) => {
-            const Icon = step.icon
+            const StepIcon = step.icon
             return (
               <AppCard key={step.title}>
                 <Stack direction="row" spacing={2} sx={{ alignItems: 'flex-start' }}>
@@ -159,7 +159,7 @@ export function WhatsAppApiGuidePage() {
                     width: 44, height: 44, borderRadius: 2, display: 'grid', placeItems: 'center',
                     bgcolor: 'primary.light', color: 'primary.main', flexShrink: 0,
                   }}>
-                    <Icon />
+                    <StepIcon size={ICON.md} strokeWidth={ICON_STROKE} />
                   </Box>
                   <Box sx={{ flex: 1 }}>
                     <Typography variant="h4">{step.title}</Typography>
@@ -167,7 +167,7 @@ export function WhatsAppApiGuidePage() {
                       {step.items.map((item) => (
                         <ListItem key={item} disableGutters sx={{ py: 0.35 }}>
                           <ListItemIcon sx={{ minWidth: 28 }}>
-                            <CheckCircleOutlined color="success" sx={{ fontSize: 18 }} />
+                            <CheckCircle size={ICON.sm} strokeWidth={ICON_STROKE} color="#16a34a" />
                           </ListItemIcon>
                           <ListItemText
                             primary={item}
@@ -221,7 +221,7 @@ export function WhatsAppApiGuidePage() {
             <List dense>
               {checks.map(([title, detail]) => (
                 <ListItem key={title} disableGutters>
-                  <ListItemIcon sx={{ minWidth: 32 }}><FactCheckOutlined color="primary" /></ListItemIcon>
+                  <ListItemIcon sx={{ minWidth: 32 }}><ClipboardCheck size={ICON.md} strokeWidth={ICON_STROKE} /></ListItemIcon>
                   <ListItemText
                     primary={title}
                     secondary={detail}
@@ -236,7 +236,7 @@ export function WhatsAppApiGuidePage() {
             <Stack spacing={1}>
               {metaLinks.map(([label, href]) => (
                 <Link key={href} href={href} target="_blank" rel="noreferrer" underline="hover" sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.75 }}>
-                  {label} <LaunchOutlined sx={{ fontSize: 14 }} />
+                  {label} <ExternalLink size={ICON.xs} strokeWidth={ICON_STROKE} />
                 </Link>
               ))}
             </Stack>
@@ -244,21 +244,21 @@ export function WhatsAppApiGuidePage() {
 
           <AppCard title="If status stays pending">
             <List dense>
-              {pendingHelp.map(({ title, icon: ProblemIcon, detail }) => {
-                return (
+              {pendingHelp.map(({ title, icon: ProblemIcon, detail }) => (
                   <ListItem key={title} disableGutters>
-                    <ListItemIcon sx={{ minWidth: 32 }}><ProblemIcon color="warning" /></ListItemIcon>
+                    <ListItemIcon sx={{ minWidth: 32 }}>
+                      <ProblemIcon size={ICON.md} strokeWidth={ICON_STROKE} color="#f59e0b" />
+                    </ListItemIcon>
                     <ListItemText
                       primary={title}
                       secondary={detail}
                       slotProps={{ primary: { variant: 'subtitle2' }, secondary: { variant: 'caption' } }}
                     />
                   </ListItem>
-                )
-              })}
+              ))}
             </List>
             <Divider sx={{ my: 1.5 }} />
-            <Button component={RouterLink} to="/whatsapp-crm/api-settings" variant="outlined" startIcon={<ContentCopyOutlined />}>
+            <Button component={RouterLink} to="/whatsapp-crm/api-settings" variant="outlined" startIcon={<Icon icon={Copy} size="sm" />}>
               Open connection form
             </Button>
           </AppCard>
