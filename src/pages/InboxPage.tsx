@@ -9,7 +9,7 @@ import { Button } from '../components/ui/Button'
 import { Badge } from '../components/ui/Badge'
 import { cn, formatChatTime, formatMessageTime } from '../lib/utils'
 import { MessageDeliveryTicks } from '../components/inbox/MessageDeliveryTicks'
-import { useInboxSocket, type InboxSocketEvent } from '../hooks/useInboxSocket'
+import { useInboxSocket, resolveConversationId, mergeDeliveryStatus, type InboxSocketEvent, type InboxSocketMessage } from '../hooks/useInboxSocket'
 import { useAuth } from '../context/AuthContext'
 import type { Conversation, Lead } from '../types'
 
@@ -70,13 +70,11 @@ export function InboxPage() {
   const { data: conversations, isLoading } = useQuery({
     queryKey: ['conversations', conversationParams],
     queryFn: () => inboxApi.conversations(conversationParams).then((r) => r.data.results ?? r.data.data ?? r.data),
-    refetchInterval: 15000,
   })
   const { data: messages } = useQuery({
     queryKey: ['messages', selectedId],
     queryFn: () => inboxApi.messages(selectedId!).then((r) => r.data.results ?? r.data.data ?? r.data),
     enabled: !!selectedId,
-    refetchInterval: selectedId ? 15000 : false,
   })
   const { data: leads } = useQuery({
     queryKey: ['leads'],
@@ -92,49 +90,87 @@ export function InboxPage() {
     enabled: !!selectedId,
   })
 
+  const upsertMessage = useCallback((raw: InboxSocketMessage) => {
+    const conversationId = resolveConversationId(raw)
+    if (!conversationId || !raw.id) return
+
+    queryClient.setQueryData<Message[]>(['messages', conversationId], (old) => {
+      const list = old ?? []
+      const existing = list.find((item) => item.id === raw.id)
+      if (existing) {
+        return list.map((item) =>
+          item.id === raw.id
+            ? {
+                ...item,
+                ...raw,
+                status: mergeDeliveryStatus(item.status, raw.status as string | undefined),
+              } as Message
+            : item,
+        )
+      }
+      return [...list, raw as Message]
+    })
+  }, [queryClient])
+
   const handleSocketEvent = useCallback((event: InboxSocketEvent) => {
-    if (event.type === 'message_status_updated') {
+    if (
+      event.type === 'message_status_updated' ||
+      event.type === 'message_delivered' ||
+      event.type === 'message_read'
+    ) {
       const msg = event.message
-      queryClient.setQueryData<Message[]>(['messages', msg.conversation_id], (old) => {
-        if (!old) return old
-        return old.map((item) => (item.id === msg.id ? { ...item, ...msg } : item))
-      })
+      upsertMessage(msg)
       queryClient.setQueryData<Conversation[]>(['conversations', conversationParams], (old) => {
         if (!old) return old
         return old.map((conv) =>
           conv.id === msg.conversation_id
-            ? { ...conv, last_outbound_status: event.conversation?.last_outbound_status || msg.status }
+            ? {
+                ...conv,
+                last_outbound_status:
+                  ('conversation' in event && event.conversation?.last_outbound_status) ||
+                  msg.status,
+              }
             : conv,
         )
       })
       queryClient.invalidateQueries({ queryKey: ['message-analytics', msg.conversation_id] })
+      return
     }
-    if (event.type === 'message_created') {
-      const msg = event.message
-      const conversationId = typeof msg.conversation === 'string' ? msg.conversation : undefined
-      if (conversationId) {
-        queryClient.setQueryData<Message[]>(['messages', conversationId], (old) => {
-          if (!old) return old
-          if (msg.id && old.some((item) => item.id === msg.id)) return old
-          return [...old, msg as Message]
-        })
-      }
+
+    if (event.type === 'message_created' || event.type === 'message_sent') {
+      upsertMessage(event.message)
       queryClient.invalidateQueries({ queryKey: ['conversations'] })
+      return
     }
+
     if (event.type === 'conversation_updated') {
-      const updated = event.conversation
-      if (!updated.id) return
+      const conversationId = event.conversation?.id ?? event.conversation_id
+      if (!conversationId) return
+
+      const patch = event.conversation?.id
+        ? event.conversation
+        : {
+            id: conversationId,
+            last_message_preview: event.last_message,
+            last_message_at: event.last_message_at,
+            unread_count: event.unread_count,
+            updated_at: event.updated_at,
+          }
+
       queryClient.setQueryData<Conversation[]>(['conversations', conversationParams], (old) => {
-        if (!old) return old
-        const exists = old.some((conv) => conv.id === updated.id)
+        if (!old) {
+          queryClient.invalidateQueries({ queryKey: ['conversations'] })
+          return old
+        }
+        const exists = old.some((conv) => conv.id === conversationId)
         if (!exists) {
           queryClient.invalidateQueries({ queryKey: ['conversations'] })
           return old
         }
-        return old.map((conv) => (conv.id === updated.id ? { ...conv, ...updated } : conv))
+        return old.map((conv) => (conv.id === conversationId ? { ...conv, ...patch } : conv))
       })
     }
-  }, [queryClient, conversationParams])
+  }, [queryClient, conversationParams, upsertMessage])
 
   useInboxSocket(organization?.id, handleSocketEvent)
 

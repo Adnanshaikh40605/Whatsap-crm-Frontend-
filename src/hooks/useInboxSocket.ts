@@ -1,6 +1,22 @@
 import { useEffect, useRef } from 'react'
 import { getApiOrigin } from '../lib/config'
 
+export type InboxSocketMessage = Record<string, unknown> & {
+  id?: string
+  conversation?: string
+  conversation_id?: string
+  direction?: string
+  content?: string
+  created_at?: string
+  is_internal_note?: boolean
+  status?: string
+  sent_at?: string | null
+  delivered_at?: string | null
+  read_at?: string | null
+  failed_at?: string | null
+  error_reason?: string | null
+}
+
 export type InboxSocketEvent =
   | {
       type: 'message_status_updated'
@@ -20,25 +36,23 @@ export type InboxSocketEvent =
       }
     }
   | {
-      type: 'message_created'
-      message: Record<string, unknown> & {
-        id?: string
-        conversation?: string
-        direction?: string
-        content?: string
-        created_at?: string
-        is_internal_note?: boolean
-        status?: string
-      }
+      type: 'message_created' | 'message_sent' | 'message_delivered' | 'message_read'
+      message: InboxSocketMessage
     }
   | {
       type: 'conversation_updated'
+      conversation_id?: string
+      last_message?: string
+      last_message_at?: string
+      unread_count?: number
+      updated_at?: string
       conversation: Record<string, unknown> & {
         id?: string
         last_message_preview?: string
         last_message_at?: string
         unread_count?: number
         metadata?: { last_message_direction?: string }
+        last_outbound_status?: string
       }
     }
   | { type: 'connected'; org_id: string }
@@ -103,4 +117,27 @@ export function useInboxSocket(
       socket?.close()
     }
   }, [orgId])
+}
+
+export function resolveConversationId(message: InboxSocketMessage): string | undefined {
+  if (typeof message.conversation_id === 'string') return message.conversation_id
+  if (typeof message.conversation === 'string') return message.conversation
+  return undefined
+}
+
+const STATUS_RANK: Record<string, number> = {
+  pending: 0,
+  sending: 1,
+  sent: 2,
+  delivered: 3,
+  read: 4,
+  failed: 99,
+}
+
+export function mergeDeliveryStatus(current?: string, incoming?: string): string | undefined {
+  if (!incoming) return current
+  if (!current) return incoming
+  if (incoming === 'failed') return 'failed'
+  if (current === 'failed') return current
+  return (STATUS_RANK[incoming] ?? 0) >= (STATUS_RANK[current] ?? 0) ? incoming : current
 }
