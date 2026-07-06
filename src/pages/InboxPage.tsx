@@ -9,7 +9,7 @@ import { Button } from '../components/ui/Button'
 import { Badge } from '../components/ui/Badge'
 import { cn, formatChatTime, formatMessageTime } from '../lib/utils'
 import { MessageDeliveryTicks } from '../components/inbox/MessageDeliveryTicks'
-import { useInboxSocket, resolveConversationId, mergeDeliveryStatus, type InboxSocketEvent, type InboxSocketMessage } from '../hooks/useInboxSocket'
+import { useInboxSocket, resolveConversationId, mergeDeliveryStatus, sortConversationsByRecent, type InboxSocketEvent, type InboxSocketMessage } from '../hooks/useInboxSocket'
 import { useAuth } from '../context/AuthContext'
 import type { Conversation, Lead } from '../types'
 
@@ -112,6 +112,20 @@ export function InboxPage() {
     })
   }, [queryClient])
 
+  const patchConversationList = useCallback((patch: Partial<Conversation> & { id: string }) => {
+    queryClient.setQueryData<Conversation[]>(['conversations', conversationParams], (old) => {
+      if (!old) return old
+      const idx = old.findIndex((conv) => conv.id === patch.id)
+      if (idx < 0) {
+        queryClient.invalidateQueries({ queryKey: ['conversations'] })
+        return old
+      }
+      const updated = { ...old[idx], ...patch }
+      const rest = old.filter((conv) => conv.id !== patch.id)
+      return sortConversationsByRecent([updated, ...rest])
+    })
+  }, [queryClient, conversationParams])
+
   const handleSocketEvent = useCallback((event: InboxSocketEvent) => {
     if (
       event.type === 'message_status_updated' ||
@@ -120,26 +134,34 @@ export function InboxPage() {
     ) {
       const msg = event.message
       upsertMessage(msg)
-      queryClient.setQueryData<Conversation[]>(['conversations', conversationParams], (old) => {
-        if (!old) return old
-        return old.map((conv) =>
-          conv.id === msg.conversation_id
-            ? {
-                ...conv,
-                last_outbound_status:
-                  ('conversation' in event && event.conversation?.last_outbound_status) ||
-                  msg.status,
-              }
-            : conv,
-        )
+      patchConversationList({
+        id: msg.conversation_id,
+        last_outbound_status:
+          ('conversation' in event && event.conversation?.last_outbound_status) || msg.status,
       })
       queryClient.invalidateQueries({ queryKey: ['message-analytics', msg.conversation_id] })
       return
     }
 
-    if (event.type === 'message_created' || event.type === 'message_sent') {
-      upsertMessage(event.message)
-      queryClient.invalidateQueries({ queryKey: ['conversations'] })
+    if (
+      event.type === 'message_created' ||
+      event.type === 'message_sent' ||
+      event.type === 'new_message'
+    ) {
+      const msg = event.message
+      upsertMessage(msg)
+      const conversationId = resolveConversationId(msg)
+      if (conversationId) {
+        const isInbound = msg.direction === 'inbound'
+        patchConversationList({
+          id: conversationId,
+          last_message_preview: (msg.content as string) || undefined,
+          last_message_at: (msg.created_at as string) || undefined,
+          metadata: {
+            last_message_direction: isInbound ? 'inbound' : 'outbound',
+          },
+        })
+      }
       return
     }
 
@@ -147,30 +169,18 @@ export function InboxPage() {
       const conversationId = event.conversation?.id ?? event.conversation_id
       if (!conversationId) return
 
-      const patch = event.conversation?.id
-        ? event.conversation
-        : {
-            id: conversationId,
-            last_message_preview: event.last_message,
-            last_message_at: event.last_message_at,
-            unread_count: event.unread_count,
-            updated_at: event.updated_at,
-          }
-
-      queryClient.setQueryData<Conversation[]>(['conversations', conversationParams], (old) => {
-        if (!old) {
-          queryClient.invalidateQueries({ queryKey: ['conversations'] })
-          return old
-        }
-        const exists = old.some((conv) => conv.id === conversationId)
-        if (!exists) {
-          queryClient.invalidateQueries({ queryKey: ['conversations'] })
-          return old
-        }
-        return old.map((conv) => (conv.id === conversationId ? { ...conv, ...patch } : conv))
+      const nested = event.conversation
+      patchConversationList({
+        id: conversationId,
+        last_message_preview: nested?.last_message_preview ?? event.last_message,
+        last_message_at: nested?.last_message_at ?? event.last_message_at,
+        unread_count: nested?.unread_count ?? event.unread_count,
+        last_outbound_status: nested?.last_outbound_status,
+        metadata: nested?.metadata,
+        updated_at: nested?.updated_at ?? event.updated_at,
       })
     }
-  }, [queryClient, conversationParams, upsertMessage])
+  }, [patchConversationList, queryClient, upsertMessage])
 
   useInboxSocket(organization?.id, handleSocketEvent)
 
@@ -209,7 +219,7 @@ export function InboxPage() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['leads'] }),
   })
 
-  const allConvs = (conversations as (Conversation & { tags?: string[] })[]) ?? []
+  const allConvs = sortConversationsByRecent((conversations as (Conversation & { tags?: string[] })[]) ?? [])
   const list = allConvs.filter((c) => {
     const matchSearch = !search || (c.contact?.full_name || c.contact?.phone || '').toLowerCase().includes(search.toLowerCase())
     const matchFilter =

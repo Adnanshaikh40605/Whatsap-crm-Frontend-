@@ -36,7 +36,7 @@ export type InboxSocketEvent =
       }
     }
   | {
-      type: 'message_created' | 'message_sent' | 'message_delivered' | 'message_read'
+      type: 'message_created' | 'message_sent' | 'message_delivered' | 'message_read' | 'new_message'
       message: InboxSocketMessage
     }
   | {
@@ -140,4 +140,12 @@ export function mergeDeliveryStatus(current?: string, incoming?: string): string
   if (incoming === 'failed') return 'failed'
   if (current === 'failed') return current
   return (STATUS_RANK[incoming] ?? 0) >= (STATUS_RANK[current] ?? 0) ? incoming : current
+}
+
+export function sortConversationsByRecent<T extends { last_message_at?: string | null }>(conversations: T[]): T[] {
+  return [...conversations].sort((a, b) => {
+    const ta = a.last_message_at ? new Date(a.last_message_at).getTime() : 0
+    const tb = b.last_message_at ? new Date(b.last_message_at).getTime() : 0
+    return tb - ta
+  })
 }
