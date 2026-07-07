@@ -253,7 +253,7 @@ export function InboxPage() {
       {/* Conversation list */}
       <div
         className={cn(
-          'flex w-full shrink-0 flex-col border-r border-[#e9edef] md:w-[340px] lg:w-[360px]',
+          'flex w-full shrink-0 flex-col border-r border-[#e9edef] sm:w-[300px] md:w-[320px] lg:w-[340px]',
           showChatOnMobile ? 'hidden md:flex' : 'flex',
         )}
       >
@@ -373,13 +373,13 @@ export function InboxPage() {
             {/* Messages */}
             <div
               ref={messagesScrollRef}
-              className="flex-1 overflow-y-auto px-4 py-3 md:px-8 md:py-4"
+              className="flex-1 overflow-y-auto px-3 py-3 sm:px-4"
               style={{
                 backgroundColor: WA.chatBg,
                 backgroundImage: CHAT_WALLPAPER,
               }}
             >
-              <div className="mx-auto max-w-3xl space-y-1">
+              <div className="w-full space-y-1">
                 {threadWithDividers.map((item, index) => {
                   if (item.type === 'divider') {
                     return (
@@ -413,21 +413,21 @@ export function InboxPage() {
                     >
                       <div
                         className={cn(
-                          'relative max-w-[min(78%,520px)] rounded-lg px-3 py-2 text-[14.2px] leading-[19px] shadow-sm',
+                          'w-fit max-w-[min(82%,42rem)] rounded-lg px-2.5 py-1.5 text-[14.2px] leading-[19px] shadow-sm',
                           isOutbound
                             ? 'rounded-tr-none bg-[#d9fdd3] text-[#111b21]'
                             : 'rounded-tl-none bg-white text-[#111b21]',
                         )}
                       >
-                        <span className="block whitespace-pre-wrap break-words pr-14">{msg.content}</span>
-                        <div className="absolute bottom-1.5 right-2 flex items-center gap-1">
-                          <span className="text-[11px] text-[#667781]">
+                        <p className="whitespace-pre-wrap break-words text-left">
+                          {msg.content}
+                          <span className="inline-flex shrink-0 items-center gap-0.5 float-right ml-2 mt-1 translate-y-0.5 pl-1 text-[11px] leading-none text-[#667781]">
                             {formatMessageTime(msg.created_at)}
+                            {isOutbound && <MessageDeliveryTicks status={msg.status} compact />}
                           </span>
-                          {isOutbound && <MessageDeliveryTicks status={msg.status} compact />}
-                        </div>
+                        </p>
                         {isOutbound && msg.status === 'failed' && msg.error_reason && (
-                          <p className="mt-1 text-right text-[11px] text-red-600">{msg.error_reason}</p>
+                          <p className="mt-1 clear-both text-right text-[11px] text-red-600">{msg.error_reason}</p>
                         )}
                       </div>
                     </div>
@@ -437,8 +437,8 @@ export function InboxPage() {
             </div>
 
             {/* Composer */}
-            <div className="shrink-0 border-t border-[#e9edef] bg-[#f0f2f5] p-3 md:p-4">
-              <div className="mx-auto flex max-w-3xl items-end gap-2">
+            <div className="shrink-0 border-t border-[#e9edef] bg-[#f0f2f5] p-3">
+              <div className="flex w-full items-end gap-2">
                 <div className="min-w-0 flex-1 rounded-xl border border-[#e9edef] bg-white shadow-sm">
                   <textarea
                     ref={replyRef}
