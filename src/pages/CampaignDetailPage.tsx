@@ -118,8 +118,8 @@ export function CampaignDetailPage() {
   if (!id) return null
 
   return (
-    <div>
-      <div className="mb-4">
+    <div className="space-y-4">
+      <div>
         <Button variant="ghost" size="sm" onClick={() => navigate('/whatsapp-crm/campaigns')}>
           <ArrowLeft className="h-4 w-4" /> Back to Campaigns
         </Button>
@@ -353,7 +353,7 @@ function OverviewPanel({
   ]
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-4">
       <div className="surface-card p-6">
         <h3 className="mb-4 font-bold" style={{ color: 'var(--text-primary)' }}>Campaign Summary</h3>
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4 text-sm">
@@ -406,8 +406,8 @@ function MetricPanel({
   charts?: React.ReactNode
 }) {
   return (
-    <div>
-      <div className="mb-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5">
+    <div className="space-y-4">
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5">
         {stats.map((s) => <StatCard key={s.label} label={s.label} value={s.value} />)}
       </div>
       {charts}

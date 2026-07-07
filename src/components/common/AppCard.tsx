@@ -13,7 +13,7 @@ interface AppCardProps {
 
 export function AppCard({ title, subtitle, action, children, noPadding, divider, sx }: AppCardProps) {
   return (
-    <Card sx={sx}>
+    <Card sx={{ borderRadius: '8px', border: '1px solid var(--color-border-subtle)', ...sx }}>
       {(title || action) && (
         <>
           <CardHeader
@@ -21,15 +21,15 @@ export function AppCard({ title, subtitle, action, children, noPadding, divider,
             subheader={subtitle}
             action={action}
             slotProps={{
-              title: { variant: 'h4' },
-              subheader: { variant: 'body2', color: 'text.secondary' },
+              title: { variant: 'h6', sx: { fontSize: 14, fontWeight: 600 } },
+              subheader: { variant: 'body2', sx: { fontSize: 12, color: 'var(--color-text-muted)' } },
             }}
-            sx={{ pb: subtitle ? 1 : 1.5 }}
+            sx={{ py: 1.5, px: 2.5, pb: subtitle ? 1 : 1.5 }}
           />
           {divider && <Divider />}
         </>
       )}
-      <CardContent sx={noPadding ? { p: 0, '&:last-child': { pb: 0 } } : undefined}>
+      <CardContent sx={noPadding ? { p: 0, '&:last-child': { pb: 0 } } : { p: 2.5, '&:last-child': { pb: 2.5 } }}>
         {children}
       </CardContent>
     </Card>

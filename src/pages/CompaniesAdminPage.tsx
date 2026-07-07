@@ -52,7 +52,7 @@ export function CompaniesAdminPage() {
   const companies = Array.isArray(data) ? data : []
 
   return (
-    <div>
+    <div className="space-y-4">
       <PageHeader
         title="Company Management"
         subtitle="Internal multi-company control — manage all businesses from one owner account"
@@ -63,7 +63,7 @@ export function CompaniesAdminPage() {
         }
       />
 
-      <div className="mb-6 rounded-xl border border-brand-200 bg-brand-50 p-4">
+      <div className="rounded-[var(--radius-md)] border border-[var(--accent-subtle)] bg-[var(--color-surface-muted)] p-4">
         <p className="text-sm text-brand-800">
           <strong>Internal Mode</strong> — No SaaS billing or plan restrictions. Each company has isolated
           WhatsApp, contacts, leads, campaigns, templates, and analytics.
@@ -71,7 +71,7 @@ export function CompaniesAdminPage() {
       </div>
 
       {showCreate && (
-        <div className="mb-6 rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+        <div className="surface-card p-5">
           <h3 className="font-semibold text-slate-800">Create New Company</h3>
           <div className="mt-4 grid gap-4 sm:grid-cols-2">
             <Input label="Company Name" value={newCompany.name}

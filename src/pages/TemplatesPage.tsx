@@ -358,7 +358,7 @@ export function TemplatesPage() {
   ]
 
   return (
-    <div>
+    <div className="space-y-4">
       <PageHeader
         title="WhatsApp Templates"
         subtitle="Manage Meta-approved message templates — organized by status, category, and quality"

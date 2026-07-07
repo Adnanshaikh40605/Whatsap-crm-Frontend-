@@ -6,13 +6,13 @@ export { SectionHeader, Badge }
 
 interface PageHeaderProps {
   title: string
-  subtitle?: string
+  subtitle?: React.ReactNode
   actions?: React.ReactNode
   badge?: string
 }
 
 export function PageHeader({ title, subtitle, actions, badge }: PageHeaderProps) {
-  return <SectionHeader title={title} subtitle={subtitle} actions={actions} badge={badge} className="mb-6" />
+  return <SectionHeader title={title} subtitle={subtitle} actions={actions} badge={badge} />
 }
 
 interface TabsProps {
@@ -23,28 +23,31 @@ interface TabsProps {
 
 export function Tabs({ tabs, active, onChange }: TabsProps) {
   return (
-    <div className="mb-4 flex flex-wrap gap-2">
+    <div
+      className="flex flex-wrap gap-6 border-b"
+      style={{ borderColor: 'var(--color-border-subtle)' }}
+    >
       {tabs.map((tab) => (
         <button
           key={tab.id}
+          type="button"
           onClick={() => onChange(tab.id)}
           className={cn(
-            'flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-medium transition-all',
-            active === tab.id ? '' : '',
+            'relative pb-3 text-[var(--font-size-2xl)] font-semibold transition-colors',
+            active === tab.id
+              ? 'text-[var(--color-surface-raised)]'
+              : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)]',
           )}
-          style={{
-            borderRadius: '100px',
-            border: active === tab.id ? '1px solid var(--text-primary)' : '1px solid var(--border)',
-            background: active === tab.id ? 'var(--text-primary)' : 'var(--bg-card)',
-            color: active === tab.id ? 'var(--bg-card)' : 'var(--text-primary)',
-          }}
         >
           {tab.label}
           {tab.count !== undefined && (
-            <span className="rounded-full px-1.5 py-0.5 text-[10px] font-semibold"
-              style={{ background: active === tab.id ? 'rgba(255,255,255,.18)' : 'var(--bg-subtle)', color: active === tab.id ? 'var(--bg-card)' : 'var(--text-muted)' }}>
-              {tab.count}
-            </span>
+            <span className="ml-1 text-[var(--font-size-md)] font-medium">({tab.count})</span>
+          )}
+          {active === tab.id && (
+            <span
+              className="absolute bottom-0 left-0 right-0 h-0.5 rounded-full"
+              style={{ background: 'var(--color-surface-raised)' }}
+            />
           )}
         </button>
       ))}
@@ -84,22 +87,35 @@ export function DataTable<T extends { id: string }>({
   return (
     <div className="surface-card overflow-hidden">
       {onSearch && (
-        <div className="flex items-center justify-end border-b px-4 py-3" style={{ borderColor: 'var(--border-subtle)' }}>
+        <div
+          className="flex items-center justify-end border-b px-4 py-3"
+          style={{ borderColor: 'var(--color-border-subtle)' }}
+        >
           <input
             type="text"
             placeholder="Search..."
             value={search}
             onChange={(e) => onSearch(e.target.value)}
-            className="h-10 rounded-[100px] border px-5 text-sm outline-none focus:border-[#1876f2]"
-            style={{ borderColor: 'var(--border)', background: 'var(--bg-subtle)', color: 'var(--text-primary)' }}
+            className="h-10 w-full max-w-xs rounded-[var(--radius-lg)] border px-4 text-[var(--font-size-2xl)] outline-none transition-colors focus:border-[var(--color-focus-ring)] focus:ring-2 focus:ring-[var(--color-focus-ring)]/20"
+            style={{
+              borderColor: 'var(--color-border-default)',
+              background: 'var(--color-surface-muted)',
+              color: 'var(--color-text-primary)',
+            }}
           />
         </div>
       )}
       <div className="overflow-x-auto">
-        <table className="w-full text-sm">
+        <table className="w-full text-[var(--font-size-2xl)]">
           <thead>
-            <tr className="border-b text-left text-xs font-bold"
-              style={{ borderColor: 'var(--border-subtle)', color: 'var(--text-muted)', background: 'var(--bg-subtle)' }}>
+            <tr
+              className="border-b text-left text-[var(--font-size-md)] font-semibold"
+              style={{
+                borderColor: 'var(--color-border-subtle)',
+                color: 'var(--color-text-muted)',
+                background: 'var(--color-surface-muted)',
+              }}
+            >
               {columns.map((col) => (
                 <th key={col.key} className="px-4 py-3">{col.label}</th>
               ))}
@@ -108,14 +124,26 @@ export function DataTable<T extends { id: string }>({
           </thead>
           <tbody>
             {loading ? (
-              <tr><td colSpan={columns.length + 1} className="px-4 py-8 text-center" style={{ color: 'var(--text-muted)' }}>Loading...</td></tr>
+              <tr>
+                <td colSpan={columns.length + (actions ? 1 : 0)} className="px-4 py-8 text-center text-[var(--color-text-muted)]">
+                  Loading...
+                </td>
+              </tr>
             ) : data.length === 0 ? (
-              <tr><td colSpan={columns.length + 1} className="px-4 py-8 text-center" style={{ color: 'var(--text-muted)' }}>No records found</td></tr>
+              <tr>
+                <td colSpan={columns.length + (actions ? 1 : 0)} className="px-4 py-8 text-center text-[var(--color-text-muted)]">
+                  No records found
+                </td>
+              </tr>
             ) : (
               data.map((row) => (
-                <tr key={row.id} className="border-b surface-interactive" style={{ borderColor: 'var(--border-subtle)' }}>
+                <tr
+                  key={row.id}
+                  className="border-b surface-interactive"
+                  style={{ borderColor: 'var(--color-border-subtle)' }}
+                >
                   {columns.map((col) => (
-                    <td key={col.key} className="px-4 py-3" style={{ color: 'var(--text-primary)' }}>
+                    <td key={col.key} className="px-4 py-3 text-[var(--color-text-primary)]">
                       {col.render ? col.render(row) : (row as Record<string, unknown>)[col.key] as React.ReactNode}
                     </td>
                   ))}

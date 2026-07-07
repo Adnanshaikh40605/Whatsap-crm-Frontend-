@@ -6,7 +6,7 @@ import {
 } from '@mui/material'
 import type { LucideIcon } from 'lucide-react'
 import {
-  Building2, ArrowRight, Trash2, Lock, LogOut, Rocket, Smartphone, MessageCircle,
+  ArrowRight, Trash2, Lock, LogOut, Smartphone, MessageCircle,
 } from 'lucide-react'
 import { useAuth, staffDefaultPath } from '../context/AuthContext'
 import { canManageProjects } from '../lib/rbac'
@@ -15,6 +15,7 @@ import { AppCard } from '../components/common'
 import { ConfirmDialog } from '../components/common/ConfirmDialog'
 import { buildDeleteConfirmMessage } from '../lib/deleteConfirm'
 import { ICON, ICON_STROKE } from '../lib/icons'
+import { APP_LOGO } from '../lib/branding'
 import type { Organization } from '../types'
 
 
@@ -225,9 +226,12 @@ export function ProjectsPage() {
         boxShadow: '0 1px 0 rgba(10, 19, 23, 0.06)',
       }}>
         <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center' }}>
-          <Avatar sx={{ bgcolor: '#EAF7EE', color: '#31A24C', width: 34, height: 34 }}>
-            <Building2 size={ICON.md} strokeWidth={ICON_STROKE} color="#31A24C" />
-          </Avatar>
+          <Box
+            component="img"
+            src={APP_LOGO}
+            alt="WhatsApp CRM"
+            sx={{ width: 34, height: 34, borderRadius: '50%', objectFit: 'cover' }}
+          />
           <Box>
             <Typography sx={{ fontWeight: 800, lineHeight: 1 }}>Projects</Typography>
             <Typography variant="caption" color="text.secondary">Choose a CRM workspace</Typography>
@@ -243,100 +247,100 @@ export function ProjectsPage() {
         </Stack>
       </Box>
 
-      <Box sx={{ maxWidth: 1080, mx: 'auto', px: { xs: 2, md: 3 }, py: { xs: 3, md: 4.5 } }}>
+      <Box sx={{ width: '100%', px: { xs: 2, sm: 3, lg: 4 }, py: { xs: 2.5, md: 3 } }}>
         {canCreate ? (
           <Box
             component="form"
             onSubmit={createProject}
             sx={{
-              display: 'grid',
-              gridTemplateColumns: { xs: '1fr', md: '1.1fr 0.9fr' },
-              alignItems: 'center',
-              gap: { xs: 3, md: 4 },
-              minHeight: { md: 285 },
-              mb: { xs: 4, md: 5 },
-              px: { xs: 3, sm: 4, md: 5 },
-              py: { xs: 3.5, md: 5 },
+              mb: 3,
+              px: { xs: 2.5, sm: 3 },
+              py: { xs: 2.5, sm: 3 },
               bgcolor: '#EEF8F4',
               border: '1px solid #DDEBE7',
               borderRadius: 2,
             }}
           >
-            <Box sx={{ maxWidth: 520 }}>
-              <Typography variant="h2" sx={{ color: '#111818', mb: 1 }}>Create New Project</Typography>
-              <Typography variant="body2" sx={{ color: '#66736F', mb: 2.5 }}>
-                Start a WhatsApp or SMS CRM workspace with its own access password.
-              </Typography>
+            <Box sx={{ minWidth: 0 }}>
+                <Typography variant="h2" sx={{ color: '#111818', mb: 0.5, fontSize: { xs: 22, md: 26 } }}>
+                  Create New Project
+                </Typography>
+                <Typography variant="body2" sx={{ color: '#66736F', mb: 2 }}>
+                  Start a WhatsApp or SMS CRM workspace with its own access password.
+                </Typography>
 
-              <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 170px' }, gap: 1.5, mb: 1.5 }}>
-                <Box>
-                  <Typography variant="subtitle2" sx={{ mb: 0.75, color: '#1C2C2A' }}>Project Name *</Typography>
-                  <TextField
-                    value={form.name}
-                    onChange={(event) => setForm((current) => ({ ...current, name: event.target.value }))}
-                    placeholder="Enter project name"
-                    required
-                    fullWidth
-                    sx={formFieldSx}
-                  />
-                </Box>
-                <Box>
-                  <Typography variant="subtitle2" sx={{ mb: 0.75, color: '#1C2C2A' }}>Project Type</Typography>
-                  <TextField
-                    select
-                    value={form.project_type}
-                    onChange={(event) => setForm((current) => ({ ...current, project_type: event.target.value as ProjectType }))}
-                    fullWidth
-                    sx={formFieldSx}
-                  >
-                    {projectTypeOptions.map((option) => (
-                      <MenuItem key={option.value} value={option.value}>{option.label}</MenuItem>
-                    ))}
-                  </TextField>
-                </Box>
-              </Box>
-
-              <Box sx={{ mb: 2 }}>
-                <Typography variant="subtitle2" sx={{ mb: 0.75, color: '#1C2C2A' }}>Project Password *</Typography>
-                <TextField
-                  type="password"
-                  value={form.project_password}
-                  onChange={(event) => setForm((current) => ({ ...current, project_password: event.target.value }))}
-                  placeholder="Set a unique project password"
-                  required
-                  fullWidth
-                  sx={formFieldSx}
-                  helperText="Required to open this project. Each company/project stays isolated."
-                />
-              </Box>
-
-              <Button
-                type="submit"
-                variant="contained"
-                disabled={!form.name.trim() || !form.project_password.trim() || loading}
-                sx={{
-                  bgcolor: '#164C4D',
-                  px: 3,
-                  '&:hover': { bgcolor: '#0F3F40' },
-                  '&.Mui-disabled': {
-                    bgcolor: 'rgba(22, 76, 77, 0.12)',
-                    color: 'rgba(22, 76, 77, 0.45)',
+                <Box sx={{
+                  display: 'grid',
+                  gridTemplateColumns: {
+                    xs: '1fr',
+                    sm: '1fr 160px',
+                    lg: 'minmax(0, 1.4fr) 150px minmax(0, 1.2fr) auto',
                   },
-                }}
-              >
-                Create
-              </Button>
-              {error ? <Typography color="error" variant="caption" sx={{ display: 'block', mt: 1.5 }}>{error}</Typography> : null}
-            </Box>
-
-            <Box sx={{ display: { xs: 'none', md: 'flex' }, justifyContent: 'center', alignItems: 'center', minHeight: 210 }}>
-              <Box sx={{
-                width: 230, height: 210, position: 'relative', borderRadius: 2,
-                bgcolor: 'rgba(255,255,255,0.66)', border: '1px solid rgba(22,76,77,0.12)',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-              }}>
-                <Rocket size={104} strokeWidth={1.5} color="#31A24C" style={{ transform: 'rotate(-18deg)' }} />
-              </Box>
+                  gap: 1.5,
+                  alignItems: 'end',
+                }}>
+                  <Box>
+                    <Typography variant="subtitle2" sx={{ mb: 0.75, color: '#1C2C2A' }}>Project Name *</Typography>
+                    <TextField
+                      value={form.name}
+                      onChange={(event) => setForm((current) => ({ ...current, name: event.target.value }))}
+                      placeholder="Enter project name"
+                      required
+                      fullWidth
+                      sx={formFieldSx}
+                    />
+                  </Box>
+                  <Box>
+                    <Typography variant="subtitle2" sx={{ mb: 0.75, color: '#1C2C2A' }}>Project Type</Typography>
+                    <TextField
+                      select
+                      value={form.project_type}
+                      onChange={(event) => setForm((current) => ({ ...current, project_type: event.target.value as ProjectType }))}
+                      fullWidth
+                      sx={formFieldSx}
+                    >
+                      {projectTypeOptions.map((option) => (
+                        <MenuItem key={option.value} value={option.value}>{option.label}</MenuItem>
+                      ))}
+                    </TextField>
+                  </Box>
+                  <Box sx={{ gridColumn: { xs: '1 / -1', sm: '1 / -1', lg: 'auto' } }}>
+                    <Typography variant="subtitle2" sx={{ mb: 0.75, color: '#1C2C2A' }}>Project Password *</Typography>
+                    <TextField
+                      type="password"
+                      value={form.project_password}
+                      onChange={(event) => setForm((current) => ({ ...current, project_password: event.target.value }))}
+                      placeholder="Set a unique project password"
+                      required
+                      fullWidth
+                      sx={formFieldSx}
+                    />
+                  </Box>
+                  <Button
+                    type="submit"
+                    variant="contained"
+                    disabled={!form.name.trim() || !form.project_password.trim() || loading}
+                    sx={{
+                      gridColumn: { xs: '1 / -1', lg: 'auto' },
+                      alignSelf: { lg: 'center' },
+                      minWidth: 120,
+                      height: 46,
+                      bgcolor: '#164C4D',
+                      px: 3,
+                      '&:hover': { bgcolor: '#0F3F40' },
+                      '&.Mui-disabled': {
+                        bgcolor: 'rgba(22, 76, 77, 0.12)',
+                        color: 'rgba(22, 76, 77, 0.45)',
+                      },
+                    }}
+                  >
+                    Create
+                  </Button>
+                </Box>
+                <Typography variant="caption" sx={{ display: 'block', mt: 1, color: '#66736F' }}>
+                  Required to open this project. Each company/project stays isolated.
+                </Typography>
+                {error ? <Typography color="error" variant="caption" sx={{ display: 'block', mt: 1 }}>{error}</Typography> : null}
             </Box>
           </Box>
         ) : null}
@@ -377,73 +381,107 @@ export function ProjectsPage() {
             </Stack>
           </AppCard>
         ) : (
-          <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: 'repeat(2, 1fr)', xl: 'repeat(3, 1fr)' }, gap: 2 }}>
+          <Stack spacing={1.5}>
             {filteredProjects.map((project) => {
               const status = isSms ? getSmsStatus(project) : getWhatsAppStatus(project)
               const ProjectTypeIcon: LucideIcon = isSms ? Smartphone : MessageCircle
               return (
-                <AppCard key={project.id} sx={{ borderColor: '#EEF0EE', borderRadius: 1.5, bgcolor: '#FFFFFF' }}>
-                  <Stack spacing={2.5} sx={{ height: '100%' }}>
-                    <Stack direction="row" spacing={2} sx={{ alignItems: 'flex-start', justifyContent: 'space-between' }}>
-                      <Box>
-                        <Typography variant="h3" sx={{ fontWeight: 800 }}>{project.name}</Typography>
-                        <Typography variant="caption" color="text.secondary">
+                <AppCard
+                  key={project.id}
+                  sx={{
+                    borderColor: '#EEF0EE',
+                    borderRadius: 1.5,
+                    bgcolor: '#FFFFFF',
+                    px: { xs: 2, sm: 2.5 },
+                    py: { xs: 2, sm: 2.25 },
+                  }}
+                >
+                  <Stack
+                    direction={{ xs: 'column', md: 'row' }}
+                    spacing={2}
+                    sx={{ alignItems: { md: 'center' }, justifyContent: 'space-between' }}
+                  >
+                    <Stack direction="row" spacing={2} sx={{ alignItems: 'center', flex: 1, minWidth: 0 }}>
+                      <Box
+                        sx={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          width: 52,
+                          height: 52,
+                          borderRadius: 1.5,
+                          bgcolor: isSms ? '#F3F5F7' : 'transparent',
+                          flexShrink: 0,
+                          overflow: 'hidden',
+                        }}
+                      >
+                        {isSms ? (
+                          <ProjectTypeIcon size={ICON.lg} strokeWidth={ICON_STROKE} color="#44505A" />
+                        ) : (
+                          <Box
+                            component="img"
+                            src={APP_LOGO}
+                            alt=""
+                            sx={{
+                              width: 52,
+                              height: 52,
+                              objectFit: 'cover',
+                              borderRadius: '50%',
+                              boxShadow: '0 2px 8px rgba(22, 76, 77, 0.12)',
+                            }}
+                          />
+                        )}
+                      </Box>
+                      <Box sx={{ minWidth: 0, flex: 1 }}>
+                        <Stack direction="row" spacing={1} sx={{ alignItems: 'center', flexWrap: 'wrap', gap: 0.75 }}>
+                          <Typography variant="h3" sx={{ fontWeight: 800 }}>{project.name}</Typography>
+                          <Chip size="small" label={status.label} sx={status.chipSx} />
+                        </Stack>
+                        <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.25 }}>
                           Created {new Date(project.created_at || Date.now()).toLocaleDateString()}
                         </Typography>
+                        <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+                          {project.description || status.help}
+                        </Typography>
                       </Box>
-                      <Stack direction="row" spacing={0.5} sx={{ alignItems: 'center' }}>
-                        {isSuperAdmin ? (
-                          <Tooltip title="Delete project">
-                            <IconButton
-                              size="small"
-                              aria-label={`Delete ${project.name}`}
-                              onClick={() => startDeleteProject(project)}
-                              sx={{ color: 'error.main' }}
-                            >
-                              <Trash2 size={ICON.sm} strokeWidth={ICON_STROKE} />
-                            </IconButton>
-                          </Tooltip>
-                        ) : null}
-                        <Chip size="small" label={status.label} sx={{ mt: 0.5, ...status.chipSx }} />
-                      </Stack>
                     </Stack>
 
-                    <Stack spacing={1.25} sx={{ flex: 1 }}>
-                      <Stack direction="row" spacing={1.25} sx={{ alignItems: 'center' }}>
-                        <ProjectTypeIcon size={ICON.md} strokeWidth={ICON_STROKE} color={isSms ? '#44505A' : '#31A24C'} />
-                        <Box>
-                          <Typography variant="subtitle2">{isSms ? 'SMS CRM' : 'WhatsApp CRM'}</Typography>
-                          <Typography variant="body2" color="text.secondary">
-                            {project.description || status.help}
-                          </Typography>
-                        </Box>
-                      </Stack>
+                    <Stack direction="row" spacing={1} sx={{ alignItems: 'center', flexShrink: 0 }}>
                       {project.has_project_password ? (
-                        <Stack direction="row" spacing={0.75} sx={{ alignItems: 'center', color: 'text.secondary' }}>
-                          <Lock size={ICON.sm} strokeWidth={ICON_STROKE} />
-                          <Typography variant="caption">Password protected</Typography>
-                        </Stack>
+                        <Lock size={ICON.sm} strokeWidth={ICON_STROKE} color="#66736F" />
                       ) : null}
+                      {isSuperAdmin ? (
+                        <Tooltip title="Delete project">
+                          <IconButton
+                            size="small"
+                            aria-label={`Delete ${project.name}`}
+                            onClick={() => startDeleteProject(project)}
+                            sx={{ color: 'error.main' }}
+                          >
+                            <Trash2 size={ICON.sm} strokeWidth={ICON_STROKE} />
+                          </IconButton>
+                        </Tooltip>
+                      ) : null}
+                      <Button
+                        variant="outlined"
+                        endIcon={<ArrowRight size={ICON.sm} strokeWidth={ICON_STROKE} />}
+                        onClick={() => viewProject(project)}
+                        sx={{
+                          minWidth: 110,
+                          borderColor: '#B8C7C3',
+                          color: '#164C4D',
+                          whiteSpace: 'nowrap',
+                          '&:hover': { borderColor: '#164C4D', bgcolor: '#F6FBF9' },
+                        }}
+                      >
+                        View
+                      </Button>
                     </Stack>
-
-                    <Button
-                      variant="outlined"
-                      endIcon={<ArrowRight size={ICON.sm} strokeWidth={ICON_STROKE} />}
-                      onClick={() => viewProject(project)}
-                      sx={{
-                        alignSelf: 'stretch',
-                        borderColor: '#B8C7C3',
-                        color: '#164C4D',
-                        '&:hover': { borderColor: '#164C4D', bgcolor: '#F6FBF9' },
-                      }}
-                    >
-                      View
-                    </Button>
                   </Stack>
                 </AppCard>
               )
             })}
-          </Box>
+          </Stack>
         )}
       </Box>
 

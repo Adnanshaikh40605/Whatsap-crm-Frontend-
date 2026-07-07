@@ -42,7 +42,7 @@ const smartpingChecklist = [
 
 export function SmsDashboardPage() {
   return (
-    <Box sx={{ maxWidth: 1320, mx: 'auto' }}>
+    <div className="space-y-4">
       <PageHeader
         title="SMS CRM"
         subtitle="Independent SMS workspace for DLT compliance, Smartping connection, sender IDs, templates, campaigns, and delivery logs."
@@ -53,11 +53,11 @@ export function SmsDashboardPage() {
         }
       />
 
-      <Alert severity="warning" sx={{ mb: 3 }}>
+      <Alert severity="warning">
         SMS CRM is separate from WhatsApp CRM. Connect DLT-approved sender IDs and templates before sending bulk SMS.
       </Alert>
 
-      <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)', xl: 'repeat(4, 1fr)' }, gap: 2, mb: 3 }}>
+      <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)', xl: 'repeat(4, 1fr)' }, gap: 2 }}>
         <StatCard label="Connection" value="Setup Required" caption="Smartping/API provider" icon={<Icon icon={Key} size="md" />} />
         <StatCard label="Sender IDs" value="0" caption="DLT approved headers" icon={<Icon icon={BadgeCheck} size="md" />} />
         <StatCard label="Templates" value="0" caption="registered SMS templates" icon={<Icon icon={MessageSquare} size="md" />} />
@@ -114,6 +114,6 @@ export function SmsDashboardPage() {
           </AppCard>
         </Stack>
       </Box>
-    </Box>
+    </div>
   )
 }

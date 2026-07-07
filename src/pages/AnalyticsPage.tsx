@@ -57,11 +57,11 @@ export function AnalyticsPage() {
   ]
 
   return (
-    <div>
+    <div className="space-y-4">
       <PageHeader title="Analytics & AI Insights" subtitle="Growth metrics, campaign performance, and AI-powered business recommendations" />
 
       {insights && (
-        <div className="mb-6 rounded-xl border border-purple-200 bg-gradient-to-r from-purple-50 to-brand-50 p-5">
+        <div className="rounded-[var(--radius-md)] border border-purple-200 bg-gradient-to-r from-purple-50 to-[var(--color-surface-muted)] p-5">
           <h3 className="font-semibold text-purple-900 mb-3">AI Business Insights</h3>
           <div className="grid gap-3 sm:grid-cols-4 mb-4">
             {[
@@ -84,7 +84,7 @@ export function AnalyticsPage() {
         </div>
       )}
 
-      <div className="mb-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
         {stats.map(({ label, value, icon: Icon, color }) => (
           <div key={label} className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
             <div className={`inline-flex rounded-lg p-2 ${color}`}><Icon className="h-4 w-4" /></div>

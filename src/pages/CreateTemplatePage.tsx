@@ -583,8 +583,8 @@ export function CreateTemplatePage() {
           </div>
         </div>
 
-        <div className="sticky top-0 flex w-full items-start justify-center bg-slate-50 px-4 py-8 lg:w-[40%] lg:min-h-full">
-          <TemplatePreview form={form} businessName="Pest Control 99" />
+        <div className="sticky top-0 flex w-full shrink-0 items-start justify-center bg-slate-50 px-3 py-6 lg:w-auto lg:min-h-full lg:min-w-[272px]">
+          <TemplatePreview form={form} businessName="Pest Control 99" compact />
         </div>
       </div>
       {deleteDialog}

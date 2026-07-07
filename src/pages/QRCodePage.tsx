@@ -40,7 +40,7 @@ export function QRCodePage() {
   })
 
   return (
-    <Box>
+    <div className="space-y-4">
       <PageHeader
         title="WhatsApp accounts"
         subtitle={
@@ -214,6 +214,6 @@ export function QRCodePage() {
           </Button>
         </DialogActions>
       </Dialog>
-    </Box>
+    </div>
   )
 }

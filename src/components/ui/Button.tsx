@@ -6,33 +6,65 @@ interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   loading?: boolean
 }
 
+const base =
+  'inline-flex items-center justify-center gap-[var(--space-6)] font-semibold transition-all duration-[var(--motion-duration-fast)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-focus-ring)] disabled:cursor-not-allowed disabled:opacity-60'
+
+const variants = {
+  primary: [
+    'bg-[var(--color-surface-raised)] text-[var(--color-text-inverse)]',
+    'hover:bg-[var(--color-surface-raised-hover)]',
+    'active:bg-[var(--color-surface-raised-pressed)]',
+    'disabled:bg-[var(--color-text-muted)]',
+  ].join(' '),
+  secondary: [
+    'border border-[var(--color-border-strong)] bg-transparent text-[var(--color-text-primary)]',
+    'hover:bg-[var(--color-surface-overlay)]',
+    'active:bg-[rgba(10,71,76,0.12)]',
+  ].join(' '),
+  dark: [
+    'bg-[var(--color-surface-base)] text-[var(--color-text-inverse)]',
+    'hover:opacity-90',
+    'active:opacity-80',
+  ].join(' '),
+  danger: [
+    'bg-[var(--color-feedback-critical)] text-[var(--color-text-inverse)]',
+    'hover:brightness-95',
+    'active:brightness-90',
+  ].join(' '),
+  outline: [
+    'border border-[var(--color-surface-raised)] bg-transparent text-[var(--color-surface-raised)]',
+    'hover:bg-[var(--accent-subtle)]',
+    'active:bg-[rgba(66,184,100,0.22)]',
+  ].join(' '),
+  ghost: [
+    'border border-[var(--color-border-default)] bg-transparent text-[var(--color-text-primary)]',
+    'hover:bg-[var(--color-surface-overlay)]',
+    'active:bg-[rgba(10,71,76,0.1)]',
+  ].join(' '),
+}
+
+const sizes = {
+  sm: 'h-8 px-[var(--space-9)] text-[var(--font-size-md)] rounded-[var(--radius-lg)]',
+  md: 'h-10 px-[var(--space-10)] text-[var(--font-size-2xl)] rounded-[var(--radius-lg)]',
+  lg: 'h-11 px-[var(--space-11)] text-[var(--font-size-2xl)] rounded-[var(--radius-lg)]',
+}
+
 export function Button({
   className, variant = 'primary', size = 'md', loading, children, disabled, ...props
 }: ButtonProps) {
-  const variants = {
-    primary: 'bg-[var(--ink-button)] active:bg-[var(--text-secondary)] text-[var(--on-ink-button)]',
-    secondary: 'border-2 border-[var(--text-primary)] bg-transparent text-[var(--text-primary)]',
-    dark: 'bg-brand-600 active:bg-brand-700 text-white',
-    danger: 'bg-[var(--critical)] text-white',
-    outline: 'border-2 border-brand-600 text-brand-600 bg-transparent',
-    ghost: 'border-2 border-black/10 bg-transparent text-[var(--text-primary)]',
-  }
-  const sizes = {
-    sm: 'h-9 px-4 text-xs rounded-[100px]',
-    md: 'h-11 px-7 text-sm rounded-[100px]',
-    lg: 'h-12 px-8 text-sm rounded-[100px]',
-  }
-
   return (
     <button
-      className={cn(
-        'inline-flex items-center justify-center gap-2 font-bold tracking-[-0.14px] transition-all disabled:bg-[var(--text-muted)] disabled:text-white disabled:opacity-60',
-        variants[variant], sizes[size], className,
-      )}
+      className={cn(base, variants[variant], sizes[size], className)}
       disabled={disabled || loading}
+      aria-busy={loading || undefined}
       {...props}
     >
-      {loading && <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />}
+      {loading && (
+        <span
+          className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white"
+          aria-hidden
+        />
+      )}
       {children}
     </button>
   )

@@ -90,7 +90,7 @@ export function TeamPage() {
   ]
 
   return (
-    <Box>
+    <div className="space-y-4">
       <PageHeader
         title="Team Members"
         subtitle="Manage agents, managers, and role-based access"
@@ -119,7 +119,7 @@ export function TeamPage() {
         <Box component="strong" sx={{ textTransform: 'capitalize' }}>{organization?.plan}</Box> plan (max {String(maxAgents)} agents)
       </Typography>
 
-      <Dialog open={open} onClose={() => setOpen(false)} maxWidth="xs" fullWidth>
+      <Dialog open={open} onClose={() => setOpen(false)} maxWidth="xs" fullWidth slotProps={{ paper: { sx: { borderRadius: '8px', border: '1px solid var(--color-border-subtle)' } } }}>
         <DialogTitle>Invite team member</DialogTitle>
         <DialogContent>
           <Stack spacing={2} sx={{ mt: 1 }}>
@@ -142,6 +142,6 @@ export function TeamPage() {
           </Button>
         </DialogActions>
       </Dialog>
-    </Box>
+    </div>
   )
 }

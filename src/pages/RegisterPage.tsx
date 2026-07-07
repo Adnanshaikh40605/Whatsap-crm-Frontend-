@@ -1,9 +1,9 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { MessageSquare } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { Button } from '../components/ui/Button'
 import { Input } from '../components/ui/Input'
+import { AppLogo } from '../components/common/AppLogo'
 
 export function RegisterPage() {
   const { register } = useAuth()
@@ -36,9 +36,8 @@ export function RegisterPage() {
   return (
     <div className="flex min-h-screen items-center justify-center p-8 bg-slate-950">
       <div className="w-full max-w-lg">
-        <div className="mb-8 flex items-center justify-center gap-2">
-          <MessageSquare className="h-8 w-8 text-brand-500" />
-          <span className="text-xl font-bold text-white">WhatsFlow</span>
+        <div className="mb-8 flex items-center justify-center">
+          <AppLogo size="md" showName nameClassName="text-white" />
         </div>
 
         <div className="rounded-2xl border border-slate-800 bg-slate-900/50 p-8">

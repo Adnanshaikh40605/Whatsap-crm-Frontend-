@@ -1,6 +1,8 @@
 import { Link as RouterLink } from 'react-router-dom'
-import { Box, Button, Chip, Stack, Typography } from '@mui/material'
-import { AppCard, PageHeader } from '../components/common'
+import { Button } from '../components/ui/Button'
+import { Badge } from '../components/ui/Badge'
+import { PageHeader } from '../components/common/PageHeader'
+import { PageSection } from '../components/layout/PageShell'
 
 interface ModulePlaceholderPageProps {
   project: 'WhatsApp CRM' | 'SMS CRM'
@@ -13,37 +15,32 @@ export function ModulePlaceholderPage({ project, title, description, items = [] 
   const root = project === 'SMS CRM' ? '/sms-crm/dashboard' : '/whatsapp-crm/dashboard'
 
   return (
-    <Box sx={{ maxWidth: 1100, mx: 'auto' }}>
+    <div className="space-y-4">
       <PageHeader
         title={title}
         subtitle={description}
-        actions={<Chip label={project} color={project === 'SMS CRM' ? 'warning' : 'success'} />}
+        actions={<Badge variant={project === 'SMS CRM' ? 'warning' : 'success'}>{project}</Badge>}
       />
 
-      <AppCard>
-        <Stack spacing={2.5}>
-          <Box>
-            <Typography variant="h4">Independent module</Typography>
-            <Typography variant="body2" color="text.secondary" sx={{ mt: 0.75 }}>
-              This page belongs only to {project}. It has its own route and can be connected to its own API surface without sharing WhatsApp/SMS behavior.
-            </Typography>
-          </Box>
+      <PageSection title="Independent module" description={`This page belongs only to ${project}. It has its own route and can be connected to its own API surface without sharing WhatsApp/SMS behavior.`}>
+        {items.length > 0 ? (
+          <div className="grid gap-3 sm:grid-cols-2">
+            {items.map((item) => (
+              <div
+                key={item}
+                className="rounded-[var(--radius-md)] border px-4 py-3"
+                style={{ borderColor: 'var(--color-border-subtle)', background: 'var(--color-surface-muted)' }}
+              >
+                <p className="text-[var(--font-size-2xl)] font-semibold text-[var(--color-text-primary)]">{item}</p>
+              </div>
+            ))}
+          </div>
+        ) : null}
 
-          {items.length > 0 ? (
-            <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: 'repeat(2, 1fr)' }, gap: 1.5 }}>
-              {items.map((item) => (
-                <Box key={item} sx={{ p: 2, borderRadius: 2, bgcolor: 'action.hover' }}>
-                  <Typography variant="body2" sx={{ fontWeight: 700 }}>{item}</Typography>
-                </Box>
-              ))}
-            </Box>
-          ) : null}
-
-          <Button component={RouterLink} to={root} variant="contained" sx={{ alignSelf: 'flex-start' }}>
-            Back to {project} Dashboard
-          </Button>
-        </Stack>
-      </AppCard>
-    </Box>
+        <RouterLink to={root} className="mt-4 inline-block">
+          <Button>Back to {project} Dashboard</Button>
+        </RouterLink>
+      </PageSection>
+    </div>
   )
 }

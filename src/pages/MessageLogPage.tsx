@@ -28,7 +28,7 @@ export function MessageLogPage({
   )
 
   return (
-    <div>
+    <div className="space-y-4">
       <PageHeader title={title} subtitle={subtitle} />
 
       <DataTable

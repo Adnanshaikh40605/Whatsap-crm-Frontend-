@@ -80,7 +80,7 @@ export function TemplateDetailPage() {
   const statusGroup = getTemplateStatusGroup(template)
 
   return (
-    <div className="mx-auto max-w-6xl space-y-5 animate-fade-in">
+    <div className="w-full space-y-4 animate-fade-in">
       <button
         onClick={() => navigate('/whatsapp-crm/templates')}
         className="flex items-center gap-1.5 text-xs font-medium hover:underline"
@@ -125,7 +125,7 @@ export function TemplateDetailPage() {
         </div>
       </div>
 
-      <div className="grid gap-5 lg:grid-cols-[1.2fr_0.8fr]">
+      <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_auto]">
         <div className="space-y-4">
           <div className="surface-card p-5 space-y-4">
             <h2 className="text-sm font-bold" style={{ color: 'var(--text-primary)' }}>Template Content</h2>
@@ -229,8 +229,8 @@ export function TemplateDetailPage() {
           )}
         </div>
 
-        <div className="surface-card flex justify-center p-6 lg:sticky lg:top-4">
-          <TemplatePreview form={previewForm} businessName="WhatsApp Business" />
+        <div className="surface-card flex justify-center self-start p-3 lg:sticky lg:top-4">
+          <TemplatePreview form={previewForm} businessName="WhatsApp Business" compact />
         </div>
       </div>
       {deleteDialog}

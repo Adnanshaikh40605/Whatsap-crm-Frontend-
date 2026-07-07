@@ -76,7 +76,7 @@ export function AIAgentPage() {
   const weeklyData = (dashboardData?.lead_trend as any[])?.map(d => d.leads) ?? [0,0,0,0,0,0,0]
 
   return (
-    <div className="mx-auto max-w-[1400px] space-y-5 animate-fade-in">
+    <div className="w-full space-y-4 animate-fade-in">
       <SectionHeader
         title="AI Agents"
         subtitle="Analytics-driven AI workspace — monitor, test, and optimize your agents"

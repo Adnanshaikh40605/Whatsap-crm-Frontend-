@@ -65,7 +65,7 @@ export function SmsPage() {
   const canSend = content.trim().length > 0 && (phone.trim().length > 0 || contactId)
 
   return (
-    <div>
+    <div className="space-y-4">
       <PageHeader
         title="Send Test SMS"
         subtitle="SMS CRM test sender. Configure DLT sender IDs, templates, and provider settings before production bulk sends."

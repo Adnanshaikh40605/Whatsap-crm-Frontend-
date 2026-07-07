@@ -31,7 +31,7 @@ export function QuotationsPage() {
   )
 
   return (
-    <div>
+    <div className="space-y-4">
       <PageHeader
         title="Quotations"
         subtitle="Create, send, and track quotations with GST support"

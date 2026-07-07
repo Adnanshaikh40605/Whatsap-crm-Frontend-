@@ -49,7 +49,7 @@ export function CrmPage() {
   }
 
   return (
-    <div className="mx-auto max-w-[1400px] space-y-6">
+    <div className="w-full space-y-4">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold tracking-tight" style={{ color: 'var(--text-primary)' }}>CRM Pipeline</h1>

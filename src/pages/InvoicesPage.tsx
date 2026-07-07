@@ -32,7 +32,7 @@ export function InvoicesPage() {
   )
 
   return (
-    <div>
+    <div className="space-y-4">
       <PageHeader
         title="Invoices"
         subtitle="Invoice builder, payment tracking, GST compliance, and automated reminders"

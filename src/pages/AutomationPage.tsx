@@ -45,10 +45,10 @@ export function AutomationPage() {
   const fuList = (followUps as { id: string; name: string; steps: unknown[]; is_active: boolean }[]) ?? []
 
   return (
-    <div>
+    <div className="space-y-4">
       <PageHeader title="Automation Engine" subtitle="Workflows, follow-up sequences, and AI-generated automations" />
 
-      <div className="mb-6 rounded-xl border border-purple-200 bg-purple-50 p-5">
+      <div className="rounded-[var(--radius-md)] border border-purple-200 bg-purple-50 p-5">
         <div className="flex items-center gap-2 mb-2">
           <Sparkles className="h-5 w-5 text-purple-600" />
           <h3 className="font-semibold text-purple-900">AI Workflow Generator</h3>

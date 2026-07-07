@@ -43,7 +43,7 @@ export function BotFlowsPage() {
   )
 
   return (
-    <div>
+    <div className="space-y-4">
       <PageHeader
         title="Bot Flows"
         actions={

@@ -204,7 +204,7 @@ export function SettingsPage() {
 
   if (!section) {
     return (
-      <div className="mx-auto max-w-[1200px] space-y-5 animate-fade-in">
+      <div className="w-full space-y-4 animate-fade-in">
         <SectionHeader
           title="Settings"
           subtitle={`Manage ${organization?.name ?? 'your organization'} configuration`}
@@ -280,7 +280,7 @@ export function SettingsPage() {
   const Icon = activeCategory.icon
 
   return (
-    <div className="mx-auto max-w-[800px] space-y-5 animate-fade-in">
+    <div className="w-full space-y-4 animate-fade-in">
       <button onClick={() => navigate('/whatsapp-crm/settings')}
         className="flex items-center gap-1.5 text-xs font-medium hover:underline" style={{ color: 'var(--text-muted)' }}>
         <ArrowLeft className="h-3.5 w-3.5" /> Back to Settings
@@ -317,7 +317,7 @@ export function SettingsPage() {
             <Input label="WhatsApp Business Account ID" placeholder="WABA ID" />
             <Input label="Permanent Access Token" type="password" placeholder="System user token" />
             <Input label="Webhook Verify Token" placeholder="Your verify token" />
-            <Input label="Webhook URL" defaultValue="https://yourdomain.com/api/v1/webhooks/whatsapp/" readOnly />
+            <Input label="Webhook URL" defaultValue="https://api.driveronhire.ai/api/v1/onboarding/webhooks/whatsapp/" readOnly />
             <Button><Smartphone className="h-4 w-4" /> Connect WhatsApp</Button>
           </div>
         )}
@@ -424,7 +424,7 @@ export function SettingsPage() {
                 </Button>
               </div>
               <p className="mt-2 text-xs" style={{ color: 'var(--text-muted)' }}>
-                Default uses the current WhatsFlow logo and name. Upload a logo to replace it in the sidebar.
+                Default uses the WhatsApp CRM logo and name. Upload a logo to replace it in the sidebar.
               </p>
             </div>
 

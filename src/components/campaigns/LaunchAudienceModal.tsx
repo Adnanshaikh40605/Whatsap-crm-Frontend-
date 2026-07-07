@@ -1,9 +1,10 @@
 import { useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { FileSpreadsheet, Send, Upload, User, Users, X } from 'lucide-react'
+import { FileSpreadsheet, Send, Upload, User, Users } from 'lucide-react'
 import { campaignApi, crmApi } from '../../lib/api'
 import { Button } from '../ui/Button'
 import { Input } from '../ui/Input'
+import { AppModal } from '../ui/AppModal'
 import type { Campaign } from '../../types/bot'
 
 type AudienceMode = 'existing' | 'single' | 'manual' | 'upload'
@@ -143,23 +144,20 @@ export function LaunchAudienceModal({ campaign, open, onClose }: Props) {
   if (!open || !campaign) return null
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-      <div className="w-full max-w-2xl rounded-[24px] border bg-white shadow-2xl" style={{ borderColor: 'var(--border-subtle)' }}>
-        <div className="flex items-start justify-between border-b px-6 py-5" style={{ borderColor: 'var(--border)' }}>
-          <div>
-            <h2 className="text-2xl font-bold tracking-[-0.24px]" style={{ color: 'var(--text-primary)' }}>
-              Launch campaign
-            </h2>
-            <p className="mt-1 text-sm" style={{ color: 'var(--text-muted)' }}>
-              Choose who will receive <strong>{campaign.name}</strong> before sending.
-            </p>
-          </div>
-          <button onClick={onClose} className="rounded-full p-2 hover:bg-[var(--hover)]">
-            <X className="h-5 w-5" />
-          </button>
-        </div>
-
-        <div className="space-y-5 px-6 py-5">
+    <AppModal
+      open={open}
+      onClose={onClose}
+      title="Launch campaign"
+      subtitle={<>Choose who will receive <strong>{campaign.name}</strong> before sending.</>}
+      footer={(
+        <>
+          <Button variant="ghost" onClick={onClose}>Cancel</Button>
+          <Button onClick={() => launchMutation.mutate()} loading={launchMutation.isPending}>
+            <Send className="h-4 w-4" /> Launch now
+          </Button>
+        </>
+      )}
+    >
           <div className="grid gap-3 md:grid-cols-4">
             {[
               { id: 'existing', label: 'Saved group', icon: Users, note: 'All contacts or a group' },
@@ -280,19 +278,10 @@ export function LaunchAudienceModal({ campaign, open, onClose }: Props) {
           )}
 
           {error && (
-            <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-bold text-red-700">
+            <div className="rounded-[var(--radius-md)] border border-[var(--color-feedback-critical)]/30 bg-[var(--color-feedback-critical-muted)] px-4 py-3 text-[var(--font-size-2xl)] font-semibold text-[var(--color-feedback-critical)]" role="alert">
               {error}
             </div>
           )}
-        </div>
-
-        <div className="flex flex-col-reverse gap-3 border-t px-6 py-5 sm:flex-row sm:justify-end" style={{ borderColor: 'var(--border)' }}>
-          <Button variant="ghost" onClick={onClose}>Cancel</Button>
-          <Button onClick={() => launchMutation.mutate()} loading={launchMutation.isPending}>
-            <Send className="h-4 w-4" /> Launch now
-          </Button>
-        </div>
-      </div>
-    </div>
+    </AppModal>
   )
 }

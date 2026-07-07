@@ -1,4 +1,5 @@
 import { Globe, Mail, MapPin, Phone } from 'lucide-react'
+import { WA } from '../../lib/whatsappTheme'
 
 export interface BusinessProfilePreviewData {
   business_name: string
@@ -15,58 +16,79 @@ export interface BusinessProfilePreviewData {
 export function BusinessProfilePreview({ profile }: { profile: BusinessProfilePreviewData }) {
   const logo = profile.logoPreview || profile.profile_picture_url
   const websites = profile.websites?.filter(Boolean) ?? []
+  const hasDetails = profile.description || profile.email || websites.length > 0 || profile.address
 
   return (
-    <div className="flex flex-col items-center">
-      <p className="mb-3 text-xs font-semibold uppercase tracking-wide" style={{ color: 'var(--text-muted)' }}>
-        Customer Preview
+    <div>
+      <p className="text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>
+        Customer preview
       </p>
-      <div className="w-[280px] overflow-hidden rounded-[28px] border-4 shadow-xl" style={{ borderColor: '#1a1a1a', background: '#111' }}>
-        <div className="bg-[#075e54] px-4 py-6 text-center text-white">
-          <div className="mx-auto mb-3 flex h-20 w-20 items-center justify-center overflow-hidden rounded-full bg-white/20">
-            {logo ? (
-              <img src={logo} alt="" className="h-full w-full object-cover" />
-            ) : (
-              <span className="text-2xl font-bold">{profile.business_name?.[0]?.toUpperCase() || '?'}</span>
+      <p className="mt-1 text-sm" style={{ color: 'var(--text-secondary)' }}>
+        How customers see your WhatsApp Business profile
+      </p>
+
+      <div className="mt-5 flex justify-center">
+        <div
+          className="w-full max-w-[260px] overflow-hidden rounded-2xl border shadow-md"
+          style={{ borderColor: WA.border, background: WA.surface }}
+        >
+          <div className="px-5 py-6 text-center text-white" style={{ background: WA.panel }}>
+            <div
+              className="mx-auto mb-3 flex h-[72px] w-[72px] items-center justify-center overflow-hidden rounded-full"
+              style={{ background: 'rgba(255,255,255,0.12)' }}
+            >
+              {logo ? (
+                <img src={logo} alt="" className="h-full w-full object-cover" />
+              ) : (
+                <span className="text-2xl font-bold">{profile.business_name?.[0]?.toUpperCase() || '?'}</span>
+              )}
+            </div>
+            <h3 className="text-base font-semibold leading-tight">{profile.business_name || 'Business Name'}</h3>
+            {profile.phone_number && (
+              <p className="mt-1.5 flex items-center justify-center gap-1.5 text-xs text-white/85">
+                <Phone className="h-3.5 w-3.5 shrink-0" />
+                <span>{profile.phone_number}</span>
+              </p>
             )}
           </div>
-          <h3 className="text-lg font-bold">{profile.business_name || 'Business Name'}</h3>
-          {profile.phone_number && (
-            <p className="mt-1 flex items-center justify-center gap-1 text-sm text-white/90">
-              <Phone className="h-3.5 w-3.5" /> {profile.phone_number}
-            </p>
-          )}
-        </div>
-        <div className="space-y-3 bg-white p-4 text-sm" style={{ color: 'var(--text-primary)' }}>
-          {profile.description && (
-            <p className="whitespace-pre-wrap leading-relaxed">{profile.description}</p>
-          )}
-          {profile.vertical_label && (
-            <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: 'var(--text-muted)' }}>
-              {profile.vertical_label}
-            </p>
-          )}
-          {profile.email && (
-            <p className="flex items-center gap-2 text-xs"><Mail className="h-3.5 w-3.5" /> {profile.email}</p>
-          )}
-          {websites.map((site) => (
-            <p key={site} className="flex items-center gap-2 text-xs text-[#008069]">
-              <Globe className="h-3.5 w-3.5" /> {site.replace(/^https?:\/\//, '')}
-            </p>
-          ))}
-          {profile.address && (
-            <p className="flex items-start gap-2 text-xs"><MapPin className="mt-0.5 h-3.5 w-3.5 shrink-0" /> {profile.address}</p>
-          )}
-          {!profile.description && !profile.email && websites.length === 0 && !profile.address && (
-            <p className="text-center text-xs" style={{ color: 'var(--text-muted)' }}>
-              Profile details will appear here
-            </p>
-          )}
+
+          <div className="space-y-3 p-4 text-sm" style={{ color: WA.text }}>
+            {profile.vertical_label && (
+              <p className="text-[11px] font-semibold uppercase tracking-wide" style={{ color: WA.textMuted }}>
+                {profile.vertical_label}
+              </p>
+            )}
+            {profile.description ? (
+              <p className="whitespace-pre-wrap text-[13px] leading-relaxed" style={{ color: WA.textSecondary }}>
+                {profile.description}
+              </p>
+            ) : null}
+            {profile.email && (
+              <p className="flex items-center gap-2 text-xs" style={{ color: WA.textSecondary }}>
+                <Mail className="h-3.5 w-3.5 shrink-0" style={{ color: WA.textMuted }} />
+                {profile.email}
+              </p>
+            )}
+            {websites.map((site) => (
+              <p key={site} className="flex items-center gap-2 text-xs" style={{ color: WA.primary }}>
+                <Globe className="h-3.5 w-3.5 shrink-0" />
+                {site.replace(/^https?:\/\//, '')}
+              </p>
+            ))}
+            {profile.address && (
+              <p className="flex items-start gap-2 text-xs" style={{ color: WA.textSecondary }}>
+                <MapPin className="mt-0.5 h-3.5 w-3.5 shrink-0" style={{ color: WA.textMuted }} />
+                {profile.address}
+              </p>
+            )}
+            {!hasDetails && (
+              <p className="py-2 text-center text-xs" style={{ color: WA.textMuted }}>
+                Add details to preview your profile
+              </p>
+            )}
+          </div>
         </div>
       </div>
-      <p className="mt-3 max-w-[280px] text-center text-[10px]" style={{ color: 'var(--text-muted)' }}>
-        Approximate preview of how customers see your WhatsApp Business profile
-      </p>
     </div>
   )
 }

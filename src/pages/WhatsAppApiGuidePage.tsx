@@ -109,7 +109,7 @@ export function WhatsAppApiGuidePage() {
   const pending = status === 'pending'
 
   return (
-    <Box sx={{ maxWidth: 1180, mx: 'auto' }}>
+    <div className="space-y-4">
       <PageHeader
         title="WhatsApp API setup guide"
         subtitle="Connect a new project like Pest Control 99 or 2end pestcontol99 to Meta Cloud API, then activate templates and campaigns."
@@ -120,7 +120,7 @@ export function WhatsAppApiGuidePage() {
         }
       />
 
-      <AppCard sx={{ mb: 3 }}>
+      <AppCard>
         <Stack direction={{ xs: 'column', md: 'row' }} spacing={2} sx={{ alignItems: { md: 'center' }, justifyContent: 'space-between' }}>
           <Box>
             <Typography variant="h4">{organization?.name || 'Current project'}</Typography>
@@ -264,6 +264,6 @@ export function WhatsAppApiGuidePage() {
           </AppCard>
         </Stack>
       </Box>
-    </Box>
+    </div>
   )
 }

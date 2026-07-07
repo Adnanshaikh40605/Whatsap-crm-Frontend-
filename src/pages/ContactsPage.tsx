@@ -120,14 +120,14 @@ export function ContactsPage() {
   }
 
   return (
-    <div>
+    <div className="space-y-4">
       <PageHeader
         title="Contacts"
         subtitle="Add contacts one by one, import in bulk, create groups, and choose campaign audiences"
       />
 
-      <div className="mb-4 grid gap-4 lg:grid-cols-2 xl:grid-cols-3">
-        <div className="surface-card p-4">
+      <div className="grid gap-3 lg:grid-cols-2 xl:grid-cols-3">
+        <div className="surface-card p-5">
           <div className="mb-3 flex items-center gap-2">
             <Users className="h-4 w-4 text-brand-600" />
             <h3 className="font-semibold" style={{ color: 'var(--text-primary)' }}>Contact groups</h3>
@@ -173,7 +173,7 @@ export function ContactsPage() {
           </div>
         </div>
 
-        <div className="surface-card p-4">
+        <div className="surface-card p-5">
           <div className="mb-3 flex items-center gap-2">
             <UserPlus className="h-4 w-4 text-brand-600" />
             <h3 className="font-semibold" style={{ color: 'var(--text-primary)' }}>Add contact</h3>

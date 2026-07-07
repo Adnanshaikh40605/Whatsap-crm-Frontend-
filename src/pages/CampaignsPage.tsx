@@ -41,7 +41,7 @@ export function CampaignsPage() {
   })
 
   return (
-    <div>
+    <div className="space-y-4">
       <PageHeader
         title="Campaigns"
         subtitle="Send approved WhatsApp templates to contact groups and track sent, delivered, read, and failed status"

@@ -69,7 +69,7 @@ export function MediaPage() {
   })
 
   return (
-    <div>
+    <div className="space-y-4">
       <PageHeader
         title="Media Library"
         subtitle="Upload images, videos, PDFs, and documents for WhatsApp templates and campaigns"
