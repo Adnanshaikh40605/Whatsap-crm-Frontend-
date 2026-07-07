@@ -383,7 +383,7 @@ export function InboxPage() {
                 {threadWithDividers.map((item, index) => {
                   if (item.type === 'divider') {
                     return (
-                      <div key={`d-${item.label}-${index}`} className="flex justify-center py-3">
+                      <div key={`d-${item.label}-${index}`} className="flex justify-center py-4">
                         <span className="rounded-lg bg-white/90 px-3 py-1 text-xs font-medium text-[#54656f] shadow-sm">
                           {item.label}
                         </span>
@@ -397,7 +397,7 @@ export function InboxPage() {
 
                   if (isNote) {
                     return (
-                      <div key={msg.id} className="flex justify-center py-1">
+                      <div key={msg.id} className="flex justify-center py-2">
                         <div className="max-w-[85%] rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-center text-xs text-amber-900">
                           <StickyNote className="mx-auto mb-1 h-3.5 w-3.5" />
                           Internal note · {msg.content}
@@ -419,15 +419,17 @@ export function InboxPage() {
                             : 'rounded-tl-none bg-white text-[#111b21]',
                         )}
                       >
-                        <p className="whitespace-pre-wrap break-words text-left">
+                        <div className="whitespace-pre-wrap break-words text-left">
                           {msg.content}
-                          <span className="inline-flex shrink-0 items-center gap-0.5 float-right ml-2 mt-1 translate-y-0.5 pl-1 text-[11px] leading-none text-[#667781]">
+                        </div>
+                        <div className="mt-0.5 flex items-center justify-end gap-1 pl-6">
+                          <span className="text-[11px] leading-none text-[#667781]">
                             {formatMessageTime(msg.created_at)}
-                            {isOutbound && <MessageDeliveryTicks status={msg.status} compact />}
                           </span>
-                        </p>
+                          {isOutbound && <MessageDeliveryTicks status={msg.status} compact />}
+                        </div>
                         {isOutbound && msg.status === 'failed' && msg.error_reason && (
-                          <p className="mt-1 clear-both text-right text-[11px] text-red-600">{msg.error_reason}</p>
+                          <p className="mt-1 text-right text-[11px] text-red-600">{msg.error_reason}</p>
                         )}
                       </div>
                     </div>
