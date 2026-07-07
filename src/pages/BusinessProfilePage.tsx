@@ -26,7 +26,6 @@ interface ProfileData {
   profile_picture_url: string
   quality_rating: string
   phone_status: string
-  phone_status: string
   code_verification_status: string
   business_hours: Record<string, string>
   last_synced_at?: string

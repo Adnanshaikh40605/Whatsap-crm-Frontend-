@@ -118,8 +118,10 @@ export function InboxPage() {
     ) {
       const msg = event.message
       upsertMessage(msg)
+      const conversationId = resolveConversationId(msg)
+      if (!conversationId) return
       patchConversationList({
-        id: msg.conversation_id,
+        id: conversationId,
         last_outbound_status:
           ('conversation' in event && event.conversation?.last_outbound_status) || msg.status,
       })
@@ -160,7 +162,6 @@ export function InboxPage() {
         unread_count: nested?.unread_count ?? event.unread_count,
         last_outbound_status: nested?.last_outbound_status,
         metadata: nested?.metadata,
-        updated_at: nested?.updated_at ?? event.updated_at,
       })
     }
   }, [patchConversationList, upsertMessage])
