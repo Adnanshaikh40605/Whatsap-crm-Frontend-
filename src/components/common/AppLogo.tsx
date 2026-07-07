@@ -2,11 +2,11 @@ import { cn } from '../../lib/utils'
 import { APP_LOGO, APP_NAME } from '../../lib/branding'
 
 const SIZES = {
-  xs: 'h-8 w-8',
-  sm: 'h-9 w-9',
-  md: 'h-12 w-12',
-  lg: 'h-16 w-16',
-  xl: 'h-20 w-20',
+  xs: 'h-8 max-w-[48px]',
+  sm: 'h-9 max-w-[52px]',
+  md: 'h-12 max-w-[68px]',
+  lg: 'h-16 max-w-[90px]',
+  xl: 'h-20 max-w-[112px]',
 } as const
 
 interface AppLogoProps {
@@ -27,7 +27,7 @@ export function AppLogo({
       <img
         src={APP_LOGO}
         alt={APP_NAME}
-        className={cn('shrink-0 rounded-full object-cover', SIZES[size])}
+        className={cn('w-auto shrink-0 object-contain', SIZES[size])}
         draggable={false}
       />
       {showName ? (

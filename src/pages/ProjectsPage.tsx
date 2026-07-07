@@ -230,7 +230,7 @@ export function ProjectsPage() {
             component="img"
             src={APP_LOGO}
             alt="WhatsApp CRM"
-            sx={{ width: 34, height: 34, borderRadius: '50%', objectFit: 'cover' }}
+            sx={{ height: 34, width: 'auto', maxWidth: 48, objectFit: 'contain' }}
           />
           <Box>
             <Typography sx={{ fontWeight: 800, lineHeight: 1 }}>Projects</Typography>
@@ -423,11 +423,11 @@ export function ProjectsPage() {
                             src={APP_LOGO}
                             alt=""
                             sx={{
-                              width: 52,
-                              height: 52,
-                              objectFit: 'cover',
-                              borderRadius: '50%',
-                              boxShadow: '0 2px 8px rgba(22, 76, 77, 0.12)',
+                              height: 44,
+                              width: 'auto',
+                              maxWidth: 56,
+                              objectFit: 'contain',
+                              flexShrink: 0,
                             }}
                           />
                         )}

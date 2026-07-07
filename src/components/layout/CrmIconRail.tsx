@@ -107,13 +107,13 @@ export function CrmIconRail({
           <img
             src={logoSrc}
             alt=""
-            className="h-9 w-9 rounded-full object-cover ring-2 ring-white/15"
+            className="h-9 w-auto max-w-[52px] object-contain"
           />
         ) : (
           <img
             src={APP_LOGO}
             alt=""
-            className="h-9 w-9 rounded-full object-cover ring-2 ring-white/15"
+            className="h-9 w-auto max-w-[52px] object-contain"
             draggable={false}
           />
         )}
