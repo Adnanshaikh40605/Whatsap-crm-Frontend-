@@ -14,13 +14,9 @@ import {
 import { useAuth } from '../../context/AuthContext'
 import { useTheme as useColorMode } from '../../context/ThemeContext'
 import { canAccessModule } from '../../lib/rbac'
-import { getApiOrigin } from '../../lib/config'
 import { ICON, ICON_STROKE } from '../../lib/icons'
 import { CrmIconRail, RAIL_WIDTH, type RailItem } from './CrmIconRail'
 import { PageShell } from './PageShell'
-import { APP_LOGO } from '../../lib/branding'
-
-const API_ORIGIN = getApiOrigin()
 
 type NavSection = { items: RailItem[]; bottom?: RailItem[] }
 
@@ -119,12 +115,6 @@ export function AppShell() {
   const showTopBar = !isInboxRoute || !isDesktop
   const mainPadding = isInboxRoute ? 0 : { xs: 1.5, lg: 2 }
 
-  const logoSrc = organization?.logo
-    ? organization.logo.startsWith('http')
-      ? organization.logo
-      : `${API_ORIGIN}${organization.logo}`
-    : APP_LOGO
-
   useEffect(() => {
     if (organizations && organizations.length === 0) {
       navigate('/projects')
@@ -137,7 +127,6 @@ export function AppShell() {
     <CrmIconRail
       mainItems={nav.items}
       bottomItems={nav.bottom}
-      logoSrc={logoSrc}
       onLogoClick={() => navigate('/projects')}
       userInitial={user?.first_name?.[0]?.toUpperCase() || 'U'}
       onUserClick={(e) => setUserAnchor(e.currentTarget)}

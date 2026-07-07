@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react'
 import { cn } from '../../lib/utils'
+import { FeedbackMessage, type FeedbackVariant } from '../common/FeedbackMessage'
 
 /** Standard page wrapper — full width, consistent vertical rhythm (matches dashboard). */
 export function PageShell({ children, className }: { children: ReactNode; className?: string }) {
@@ -64,27 +65,16 @@ export function PageAlert({
   children,
   variant = 'info',
   className,
+  onClose,
 }: {
   children: ReactNode
-  variant?: 'info' | 'warning' | 'error' | 'success'
+  variant?: FeedbackVariant
   className?: string
+  onClose?: () => void
 }) {
-  const styles = {
-    info: 'border-[var(--color-border-default)] bg-[var(--color-surface-muted)] text-[var(--color-text-secondary)]',
-    warning: 'border-[var(--color-feedback-warning)]/40 bg-[var(--color-feedback-warning-muted)] text-[var(--color-text-primary)]',
-    error: 'border-[var(--color-feedback-critical)]/30 bg-[var(--color-feedback-critical-muted)] text-[var(--color-feedback-critical)]',
-    success: 'border-[var(--color-feedback-success)]/30 bg-[var(--color-feedback-success-muted)] text-[var(--color-text-primary)]',
-  }
   return (
-    <div
-      className={cn(
-        'rounded-[var(--radius-md)] border px-4 py-3 text-[var(--font-size-2xl)]',
-        styles[variant],
-        className,
-      )}
-      role={variant === 'error' ? 'alert' : undefined}
-    >
+    <FeedbackMessage variant={variant} className={className} onClose={onClose}>
       {children}
-    </div>
+    </FeedbackMessage>
   )
 }

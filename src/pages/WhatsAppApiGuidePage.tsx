@@ -1,13 +1,13 @@
 import { Link as RouterLink } from 'react-router-dom'
 import {
-  Alert, Box, Button, Chip, Divider, Link, List, ListItem, ListItemIcon,
+  Box, Button, Chip, Divider, Link, List, ListItem, ListItemIcon,
   ListItemText, Stack, Typography,
 } from '@mui/material'
 import {
   GitBranch, CheckCircle, CloudCheck, Copy, FileText, ClipboardCheck, Key, ExternalLink,
   Smartphone, Shield, SlidersHorizontal, RefreshCw, Webhook,
 } from 'lucide-react'
-import { PageHeader, AppCard } from '../components/common'
+import { PageHeader, AppCard, FeedbackMessage } from '../components/common'
 import { useAuth } from '../context/AuthContext'
 import { Icon } from '../components/ui/Icon'
 import { ICON, ICON_STROKE } from '../lib/icons'
@@ -140,13 +140,16 @@ export function WhatsAppApiGuidePage() {
         </Stack>
       </AppCard>
 
-      <Alert severity={live ? 'success' : pending ? 'warning' : 'info'} sx={{ mb: 3 }}>
+      <FeedbackMessage
+        variant={live ? 'success' : pending ? 'warning' : 'info'}
+        className="mb-3"
+      >
         {live
           ? 'This workspace has the required Meta API credentials. You can sync templates and send campaigns.'
           : pending
             ? 'This workspace has partial WhatsApp details. Add the missing credential, usually the permanent access token, to make it LIVE.'
             : 'This workspace is not connected yet. Follow the steps below, then open WhatsApp setup and paste the credentials.'}
-      </Alert>
+      </FeedbackMessage>
 
       <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', lg: '2fr 1fr' }, gap: 3 }}>
         <Stack spacing={2}>

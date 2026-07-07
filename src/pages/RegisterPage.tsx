@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext'
 import { Button } from '../components/ui/Button'
 import { Input } from '../components/ui/Input'
 import { AppLogo } from '../components/common/AppLogo'
+import { FeedbackMessage } from '../components/common/FeedbackMessage'
 
 export function RegisterPage() {
   const { register } = useAuth()
@@ -81,9 +82,9 @@ export function RegisterPage() {
               required
               minLength={8}
             />
-            {error && (
-              <p className="rounded-lg bg-red-500/10 px-3 py-2 text-sm text-red-400">{error}</p>
-            )}
+            {error ? (
+              <FeedbackMessage variant="error">{error}</FeedbackMessage>
+            ) : null}
             <Button type="submit" className="w-full" size="lg" loading={loading}>
               Create account
             </Button>

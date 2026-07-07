@@ -9,7 +9,7 @@ import { Button } from '../components/ui/Button'
 import { Input } from '../components/ui/Input'
 import { Badge } from '../components/ui/Badge'
 import { BusinessProfilePreview } from '../components/templates/BusinessProfilePreview'
-import { useToast } from '../components/common'
+import { useToast, FeedbackMessage } from '../components/common'
 import { formatDate } from '../lib/utils'
 
 const WEEKDAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
@@ -289,15 +289,13 @@ export function BusinessProfilePage() {
       </div>
 
       {!canEdit && (
-        <div className="rounded-[var(--radius-md)] border border-amber-200 bg-amber-50 px-4 py-3 text-[var(--font-size-2xl)] text-amber-900">
+        <FeedbackMessage variant="warning">
           View only — only organization owners and admins can edit the business profile.
-        </div>
+        </FeedbackMessage>
       )}
 
       {validationErrors.length > 0 && canEdit && (
-        <div className="rounded-[var(--radius-md)] border border-red-200 bg-red-50 px-4 py-3 text-[var(--font-size-2xl)] text-red-700" role="alert">
-          {validationErrors[0]}
-        </div>
+        <FeedbackMessage variant="error">{validationErrors[0]}</FeedbackMessage>
       )}
 
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_320px]">

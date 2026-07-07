@@ -5,6 +5,7 @@ import { campaignApi, crmApi } from '../../lib/api'
 import { Button } from '../ui/Button'
 import { Input } from '../ui/Input'
 import { AppModal } from '../ui/AppModal'
+import { FeedbackMessage } from '../common/FeedbackMessage'
 import type { Campaign } from '../../types/bot'
 
 type AudienceMode = 'existing' | 'single' | 'manual' | 'upload'
@@ -206,9 +207,9 @@ export function LaunchAudienceModal({ campaign, open, onClose }: Props) {
             <div className="space-y-3">
               <label className="block text-sm font-bold" style={{ color: 'var(--text-primary)' }}>Saved contact</label>
               {contactList.length === 0 ? (
-                <p className="rounded-2xl border border-[#f7b928] bg-[#fff5cc] px-4 py-3 text-xs font-bold text-[#0a1317]">
+                <FeedbackMessage variant="warning">
                   No contacts saved yet. Add a contact under Contacts first.
-                </p>
+                </FeedbackMessage>
               ) : (
                 <select
                   value={selectedContact}
@@ -277,11 +278,9 @@ export function LaunchAudienceModal({ campaign, open, onClose }: Props) {
             </div>
           )}
 
-          {error && (
-            <div className="rounded-[var(--radius-md)] border border-[var(--color-feedback-critical)]/30 bg-[var(--color-feedback-critical-muted)] px-4 py-3 text-[var(--font-size-2xl)] font-semibold text-[var(--color-feedback-critical)]" role="alert">
-              {error}
-            </div>
-          )}
+          {error ? (
+            <FeedbackMessage variant="error">{error}</FeedbackMessage>
+          ) : null}
     </AppModal>
   )
 }

@@ -1,11 +1,11 @@
 import { Link as RouterLink } from 'react-router-dom'
 import {
-  Alert, Box, Button, List, ListItem, ListItemIcon, ListItemText, Stack, Typography,
+  Box, Button, List, ListItem, ListItemIcon, ListItemText, Stack, Typography,
 } from '@mui/material'
 import {
   CheckCircle, Server, ClipboardCheck, Key, Send, MessageSquare, BadgeCheck,
 } from 'lucide-react'
-import { PageHeader, AppCard, StatCard } from '../components/common'
+import { PageHeader, AppCard, StatCard, FeedbackMessage } from '../components/common'
 import { Icon } from '../components/ui/Icon'
 import { ICON, ICON_STROKE } from '../lib/icons'
 
@@ -53,9 +53,9 @@ export function SmsDashboardPage() {
         }
       />
 
-      <Alert severity="warning">
+      <FeedbackMessage variant="warning">
         SMS CRM is separate from WhatsApp CRM. Connect DLT-approved sender IDs and templates before sending bulk SMS.
-      </Alert>
+      </FeedbackMessage>
 
       <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)', xl: 'repeat(4, 1fr)' }, gap: 2 }}>
         <StatCard label="Connection" value="Setup Required" caption="Smartping/API provider" icon={<Icon icon={Key} size="md" />} />

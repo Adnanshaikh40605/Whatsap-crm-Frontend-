@@ -5,6 +5,7 @@ import { campaignApi, crmApi } from '../../lib/api'
 import { Button } from '../ui/Button'
 import { Input } from '../ui/Input'
 import { formatScheduleLabel, ScheduleDateTimeField } from '../ui/ScheduleDateTimeField'
+import { FeedbackMessage } from '../common/FeedbackMessage'
 
 const STEPS = ['Campaign Name', 'Audience', 'Template', 'Schedule', 'Review']
 
@@ -176,17 +177,17 @@ export function CampaignWizard({ open, onClose }: Props) {
               </div>
 
               {form.audience_type === 'all' && (
-                <p className="rounded-2xl border px-4 py-3 text-sm" style={{ borderColor: 'var(--border)', color: 'var(--text-secondary)' }}>
+                <FeedbackMessage variant="info">
                   Sends to every active contact in your CRM ({contactList.length} contact{contactList.length === 1 ? '' : 's'}).
-                </p>
+                </FeedbackMessage>
               )}
 
               {form.audience_type === 'group' && (
                 <div className="space-y-2">
                   {groupList.length === 0 ? (
-                    <p className="rounded-2xl border border-[#f7b928] bg-[#fff5cc] px-4 py-3 text-xs font-bold text-[#0a1317]">
+                    <FeedbackMessage variant="warning">
                       No groups yet. Create one under Contacts, or use &quot;One number&quot; to send to a saved contact.
-                    </p>
+                    </FeedbackMessage>
                   ) : null}
                   {groupList.map((group) => (
                     <button
@@ -210,9 +211,9 @@ export function CampaignWizard({ open, onClose }: Props) {
               {form.audience_type === 'single' && (
                 <div className="space-y-2">
                   {contactList.length === 0 ? (
-                    <p className="rounded-2xl border border-[#f7b928] bg-[#fff5cc] px-4 py-3 text-xs font-bold text-[#0a1317]">
+                    <FeedbackMessage variant="warning">
                       No contacts saved yet. Add your number under Contacts first, then come back here.
-                    </p>
+                    </FeedbackMessage>
                   ) : (
                     contactList.map((contact) => (
                       <button
@@ -239,9 +240,9 @@ export function CampaignWizard({ open, onClose }: Props) {
             <div className="space-y-2">
               <p className="text-sm font-medium mb-3" style={{ color: 'var(--text-primary)' }}>Choose Template</p>
               {tplList.length === 0 && (
-                <p className="rounded-2xl border border-[#f7b928] bg-[#fff5cc] px-4 py-3 text-xs font-bold text-[#0a1317]">
+                <FeedbackMessage variant="warning">
                   No approved template found. Create a template and wait for Meta approval before launching a campaign.
-                </p>
+                </FeedbackMessage>
               )}
               {tplList.map((t) => (
                 <button key={t.id} onClick={() => setForm({ ...form, template_id: t.id })}

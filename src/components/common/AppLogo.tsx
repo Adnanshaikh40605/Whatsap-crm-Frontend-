@@ -1,12 +1,12 @@
 import { cn } from '../../lib/utils'
-import { APP_LOGO, APP_NAME } from '../../lib/branding'
+import { WHATSAPP_ICON, APP_NAME } from '../../lib/branding'
 
 const SIZES = {
-  xs: 'h-8 max-w-[48px]',
-  sm: 'h-9 max-w-[52px]',
-  md: 'h-12 max-w-[68px]',
-  lg: 'h-16 max-w-[90px]',
-  xl: 'h-20 max-w-[112px]',
+  xs: 'h-8 w-8',
+  sm: 'h-9 w-9',
+  md: 'h-12 w-12',
+  lg: 'h-16 w-16',
+  xl: 'h-20 w-20',
 } as const
 
 interface AppLogoProps {
@@ -25,9 +25,9 @@ export function AppLogo({
   return (
     <div className={cn('flex items-center gap-2.5', className)}>
       <img
-        src={APP_LOGO}
+        src={WHATSAPP_ICON}
         alt={APP_NAME}
-        className={cn('w-auto shrink-0 object-contain', SIZES[size])}
+        className={cn('shrink-0 rounded-full object-contain', SIZES[size])}
         draggable={false}
       />
       {showName ? (

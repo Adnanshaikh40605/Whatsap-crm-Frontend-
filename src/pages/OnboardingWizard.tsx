@@ -8,6 +8,7 @@ import { onboardingApi, coreApi } from '../lib/api'
 import { useAuth } from '../context/AuthContext'
 import { useQuery } from '@tanstack/react-query'
 import { Button } from '../components/ui/Button'
+import { FeedbackMessage } from '../components/common'
 import { Input } from '../components/ui/Input'
 import { cn } from '../lib/utils'
 
@@ -200,11 +201,10 @@ export function OnboardingWizard() {
             {step === 1 && (
               <div className="text-center">
                 {whatsappConnected ? (
-                  <div className="rounded-xl border border-green-200 bg-green-50 p-6">
-                    <Check className="mx-auto h-12 w-12 text-green-600" />
-                    <p className="mt-3 font-semibold text-green-800">WhatsApp Connected!</p>
-                    <p className="mt-1 text-sm text-green-600">Your inbox, CRM, and automations are ready.</p>
-                  </div>
+                  <FeedbackMessage variant="success">
+                    <p className="font-semibold">WhatsApp Connected!</p>
+                    <p className="mt-0.5 font-normal opacity-90">Your inbox, CRM, and automations are ready.</p>
+                  </FeedbackMessage>
                 ) : (
                   <>
                     <div className="mx-auto mb-6 max-w-sm rounded-xl border border-slate-200 p-6">
@@ -301,12 +301,12 @@ export function OnboardingWizard() {
                   <Sparkles className="h-4 w-4" /> Generate with AI
                 </Button>
                 {aiResult && (
-                  <div className="rounded-xl border border-green-200 bg-green-50 p-4 space-y-2">
-                    <p className="font-semibold text-green-800">AI Generated Setup ✓</p>
-                    <p className="text-sm text-green-700"><strong>Industry:</strong> {String(aiResult.industry)}</p>
-                    <p className="text-sm text-green-700"><strong>Welcome:</strong> {String(aiResult.welcome_message)}</p>
-                    <p className="text-sm text-green-700"><strong>Pipeline:</strong> {(aiResult.pipeline_stages as string[])?.join(' → ')}</p>
-                  </div>
+                  <FeedbackMessage variant="success">
+                    <p className="font-semibold">AI Generated Setup</p>
+                    <p className="mt-1 font-normal"><strong>Industry:</strong> {String(aiResult.industry)}</p>
+                    <p className="font-normal"><strong>Welcome:</strong> {String(aiResult.welcome_message)}</p>
+                    <p className="font-normal"><strong>Pipeline:</strong> {(aiResult.pipeline_stages as string[])?.join(' → ')}</p>
+                  </FeedbackMessage>
                 )}
               </div>
             )}

@@ -2,13 +2,13 @@ import { useState } from 'react'
 import { useMutation } from '@tanstack/react-query'
 import { Link as RouterLink } from 'react-router-dom'
 import {
-  Alert, Box, Button, Chip, Dialog, DialogActions, DialogContent, DialogTitle,
+  Box, Button, Chip, Dialog, DialogActions, DialogContent, DialogTitle,
   Divider, Stack, Step, StepLabel, Stepper, TextField, Typography,
 } from '@mui/material'
 import { MessageCircle, CheckCircle, Zap, BadgeCheck, BookOpen } from 'lucide-react'
 import { onboardingApi } from '../lib/api'
 import { useAuth } from '../context/AuthContext'
-import { PageHeader, AppCard, useToast } from '../components/common'
+import { PageHeader, AppCard, useToast, FeedbackMessage } from '../components/common'
 import { Icon } from '../components/ui/Icon'
 import { ICON } from '../lib/icons'
 import type { AxiosError } from 'axios'
@@ -183,10 +183,10 @@ export function QRCodePage() {
         <DialogTitle>Connect WhatsApp Business</DialogTitle>
         <DialogContent>
           <Stack spacing={2.5} sx={{ mt: 1 }}>
-            <Alert severity="info">
+            <FeedbackMessage variant="info">
               Embedded Signup with Meta is the recommended path. If you already have a WABA, enter its
               IDs below to link it directly via the Cloud API.
-            </Alert>
+            </FeedbackMessage>
             <Button variant="contained" startIcon={<Icon icon={MessageCircle} size="sm" />} fullWidth disabled>
               Continue with Meta (Embedded Signup)
             </Button>

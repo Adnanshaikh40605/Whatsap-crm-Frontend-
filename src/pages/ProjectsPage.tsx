@@ -11,11 +11,11 @@ import {
 import { useAuth, staffDefaultPath } from '../context/AuthContext'
 import { canManageProjects } from '../lib/rbac'
 import { orgApi } from '../lib/api'
-import { AppCard } from '../components/common'
+import { AppCard, FeedbackMessage } from '../components/common'
 import { ConfirmDialog } from '../components/common/ConfirmDialog'
 import { buildDeleteConfirmMessage } from '../lib/deleteConfirm'
 import { ICON, ICON_STROKE } from '../lib/icons'
-import { APP_LOGO } from '../lib/branding'
+import { WHATSAPP_ICON } from '../lib/branding'
 import type { Organization } from '../types'
 
 
@@ -228,9 +228,9 @@ export function ProjectsPage() {
         <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center' }}>
           <Box
             component="img"
-            src={APP_LOGO}
+            src={WHATSAPP_ICON}
             alt="WhatsApp CRM"
-            sx={{ height: 34, width: 'auto', maxWidth: 48, objectFit: 'contain' }}
+            sx={{ width: 34, height: 34, borderRadius: '50%', objectFit: 'contain' }}
           />
           <Box>
             <Typography sx={{ fontWeight: 800, lineHeight: 1 }}>Projects</Typography>
@@ -340,7 +340,11 @@ export function ProjectsPage() {
                 <Typography variant="caption" sx={{ display: 'block', mt: 1, color: '#66736F' }}>
                   Required to open this project. Each company/project stays isolated.
                 </Typography>
-                {error ? <Typography color="error" variant="caption" sx={{ display: 'block', mt: 1 }}>{error}</Typography> : null}
+                {error ? (
+                  <Box sx={{ mt: 1.5 }}>
+                    <FeedbackMessage variant="error">{error}</FeedbackMessage>
+                  </Box>
+                ) : null}
             </Box>
           </Box>
         ) : null}
@@ -420,12 +424,12 @@ export function ProjectsPage() {
                         ) : (
                           <Box
                             component="img"
-                            src={APP_LOGO}
+                            src={WHATSAPP_ICON}
                             alt=""
                             sx={{
+                              width: 44,
                               height: 44,
-                              width: 'auto',
-                              maxWidth: 56,
+                              borderRadius: '50%',
                               objectFit: 'contain',
                               flexShrink: 0,
                             }}

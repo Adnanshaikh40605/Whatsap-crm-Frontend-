@@ -3,7 +3,7 @@ import { useParams, useNavigate, Link } from 'react-router-dom'
 import { useMutation } from '@tanstack/react-query'
 import {
   Smartphone, Bot, Terminal, Building2, Users, Bell, Shield,
-  Palette, Webhook, ChevronRight, ArrowLeft, MessageCircle, RotateCcw, User, KeyRound,
+  Palette, Webhook, ChevronRight, ArrowLeft, RotateCcw, User, KeyRound,
 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { orgApi } from '../lib/api'
@@ -12,6 +12,7 @@ import { Button } from '../components/ui/Button'
 import { Input } from '../components/ui/Input'
 import { useToast } from '../components/common'
 import { getApiOrigin, getApiUrl } from '../lib/config'
+import { WHATSAPP_ICON } from '../lib/branding'
 import { AccountSettingsPanel } from '../components/settings/AccountSettingsPanel'
 import { ApiKeysPanel } from '../components/settings/ApiKeysPanel'
 
@@ -384,11 +385,11 @@ export function SettingsPage() {
             <div className="rounded-xl border p-4" style={{ borderColor: 'var(--border)', background: 'var(--bg-subtle)' }}>
               <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: 'var(--text-muted)' }}>Sidebar preview</p>
               <div className="mt-3 flex items-center gap-3">
-                <div className="flex h-12 w-12 items-center justify-center overflow-hidden rounded-full bg-brand-600 text-white">
+                <div className="flex h-12 w-12 items-center justify-center overflow-hidden rounded-full">
                   {appearanceForm.previewUrl ? (
                     <img src={appearanceForm.previewUrl} alt="" className="h-full w-full object-cover" />
                   ) : (
-                    <MessageCircle className="h-5 w-5" />
+                    <img src={WHATSAPP_ICON} alt="" className="h-full w-full object-contain" />
                   )}
                 </div>
                 <div>
@@ -424,7 +425,7 @@ export function SettingsPage() {
                 </Button>
               </div>
               <p className="mt-2 text-xs" style={{ color: 'var(--text-muted)' }}>
-                Default uses the WhatsApp CRM logo and name. Upload a logo to replace it in the sidebar.
+                Default uses the WhatsApp icon and name. The sidebar always shows the WhatsApp icon.
               </p>
             </div>
 

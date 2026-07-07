@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext'
 import { Button } from '../components/ui/Button'
 import { Input } from '../components/ui/Input'
 import { AppLogo } from '../components/common/AppLogo'
+import { FeedbackMessage } from '../components/common/FeedbackMessage'
 import { APP_NAME, APP_TAGLINE } from '../lib/branding'
 
 export function LoginPage() {
@@ -56,9 +57,9 @@ export function LoginPage() {
               placeholder="Your username" required autoComplete="username" />
             <Input label="Password" type="password" value={password} onChange={(e) => setPassword(e.target.value)}
               placeholder="••••••••" required />
-            {error && (
-              <p className="rounded-xl bg-red-50 px-4 py-3 text-sm text-red-600 border border-red-100">{error}</p>
-            )}
+            {error ? (
+              <FeedbackMessage variant="error">{error}</FeedbackMessage>
+            ) : null}
             <Button type="submit" className="w-full" size="lg" loading={loading}>Sign in</Button>
           </form>
 

@@ -2,7 +2,7 @@ import { NavLink } from 'react-router-dom'
 import type { LucideIcon } from 'lucide-react'
 import { ChevronDown } from 'lucide-react'
 import { cn } from '../../lib/utils'
-import { APP_LOGO } from '../../lib/branding'
+import { WHATSAPP_ICON } from '../../lib/branding'
 import { tokens } from '../../lib/design-tokens'
 
 export const RAIL_WIDTH = 72
@@ -24,7 +24,6 @@ export type RailItem = {
 type CrmIconRailProps = {
   mainItems: RailItem[]
   bottomItems?: RailItem[]
-  logoSrc?: string
   onLogoClick?: () => void
   userInitial?: string
   onUserClick?: (e: React.MouseEvent<HTMLElement>) => void
@@ -86,7 +85,6 @@ function RailLink({
 export function CrmIconRail({
   mainItems,
   bottomItems = [],
-  logoSrc,
   onLogoClick,
   userInitial = 'U',
   onUserClick,
@@ -103,20 +101,12 @@ export function CrmIconRail({
         className="flex shrink-0 flex-col items-center px-2 pb-3 pt-4 transition-opacity hover:opacity-90"
         aria-label="Home"
       >
-        {logoSrc ? (
-          <img
-            src={logoSrc}
-            alt=""
-            className="h-9 w-auto max-w-[52px] object-contain"
-          />
-        ) : (
-          <img
-            src={APP_LOGO}
-            alt=""
-            className="h-9 w-auto max-w-[52px] object-contain"
-            draggable={false}
-          />
-        )}
+        <img
+          src={WHATSAPP_ICON}
+          alt=""
+          className="h-9 w-9 rounded-full object-contain"
+          draggable={false}
+        />
       </button>
 
       <nav className="flex-1 overflow-y-auto overflow-x-hidden py-0.5 scrollbar-thin">

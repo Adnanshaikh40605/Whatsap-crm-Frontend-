@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import {
-  ArrowLeft, ArrowRight, Check, Copy, Loader2, Plus, Save, Send, Trash2, Upload,
+  ArrowLeft, ArrowRight, Copy, Loader2, Plus, Save, Send, Trash2, Upload,
 } from 'lucide-react'
 import { campaignApi } from '../lib/api'
 import { filterLanguages } from '../lib/metaLanguages'
@@ -23,6 +23,7 @@ import {
 import { TemplatePreview } from '../components/templates/TemplatePreview'
 import { Button } from '../components/ui/Button'
 import { useDeleteConfirm } from '../hooks/useDeleteConfirm'
+import { FeedbackMessage, useToast } from '../components/common'
 import type { WhatsAppTemplate } from '../types/bot'
 
 const WIZARD_STEPS = [
@@ -47,6 +48,7 @@ function FieldHint({ error }: { error?: string }) {
 
 export function CreateTemplatePage() {
   const navigate = useNavigate()
+  const toast = useToast()
   const queryClient = useQueryClient()
   const [searchParams] = useSearchParams()
   const [step, setStep] = useState(0)
@@ -361,7 +363,7 @@ export function CreateTemplatePage() {
                           const file = e.target.files?.[0]
                           if (!file) return
                           if (file.size > 5 * 1024 * 1024) {
-                            alert('File must be 5 MB or smaller.')
+                            toast.error('File must be 5 MB or smaller.')
                             return
                           }
                           const preview = URL.createObjectURL(file)
@@ -517,18 +519,18 @@ export function CreateTemplatePage() {
               <section className="space-y-4">
                 <h2 className="text-base font-bold">Step 6 — Review & Submit</h2>
                 {errors.length === 0 ? (
-                  <div className="rounded-xl border border-green-200 bg-green-50 p-4 text-sm text-green-800">
-                    <Check className="mb-1 inline h-4 w-4" /> All Meta validations passed. Ready to submit.
-                  </div>
+                  <FeedbackMessage variant="success">
+                    All Meta validations passed. Ready to submit.
+                  </FeedbackMessage>
                 ) : (
-                  <div className="rounded-xl border border-red-200 bg-red-50 p-4">
-                    <p className="mb-2 text-sm font-semibold text-red-800">Fix these before submitting:</p>
-                    <ul className="space-y-1 text-sm text-red-700">
+                  <FeedbackMessage variant="error">
+                    <p className="font-semibold">Fix these before submitting:</p>
+                    <ul className="mt-1 space-y-0.5 font-normal">
                       {errors.map((e) => (
                         <li key={`${e.field}-${e.message}`}>• {e.message}</li>
                       ))}
                     </ul>
-                  </div>
+                  </FeedbackMessage>
                 )}
 
                 <dl className="grid gap-2 text-sm">
@@ -547,12 +549,28 @@ export function CreateTemplatePage() {
                 </dl>
 
                 {submitPhase !== 'idle' && (
-                  <div className="rounded-xl border p-4 text-sm" style={{ borderColor: 'var(--border-subtle)' }}>
-                    {submitPhase === 'creating' && <p className="flex items-center gap-2"><Loader2 className="h-4 w-4 animate-spin" /> Creating template...</p>}
-                    {submitPhase === 'submitting' && <p className="flex items-center gap-2"><Loader2 className="h-4 w-4 animate-spin" /> Submitting to Meta...</p>}
-                    {submitPhase === 'waiting' && <p className="flex items-center gap-2"><Loader2 className="h-4 w-4 animate-spin" /> Waiting for approval...</p>}
-                    {submitPhase === 'completed' && <p className="text-green-700">✅ Completed — redirecting to templates...</p>}
-                    {submitPhase === 'error' && <p className="text-red-600">❌ {submitError}</p>}
+                  <div className="space-y-2">
+                    {submitPhase === 'creating' && (
+                      <div className="rounded-xl border p-4 text-sm" style={{ borderColor: 'var(--border-subtle)' }}>
+                        <p className="flex items-center gap-2"><Loader2 className="h-4 w-4 animate-spin" /> Creating template...</p>
+                      </div>
+                    )}
+                    {submitPhase === 'submitting' && (
+                      <div className="rounded-xl border p-4 text-sm" style={{ borderColor: 'var(--border-subtle)' }}>
+                        <p className="flex items-center gap-2"><Loader2 className="h-4 w-4 animate-spin" /> Submitting to Meta...</p>
+                      </div>
+                    )}
+                    {submitPhase === 'waiting' && (
+                      <div className="rounded-xl border p-4 text-sm" style={{ borderColor: 'var(--border-subtle)' }}>
+                        <p className="flex items-center gap-2"><Loader2 className="h-4 w-4 animate-spin" /> Waiting for approval...</p>
+                      </div>
+                    )}
+                    {submitPhase === 'completed' && (
+                      <FeedbackMessage variant="success">Completed — redirecting to templates...</FeedbackMessage>
+                    )}
+                    {submitPhase === 'error' && (
+                      <FeedbackMessage variant="error">{submitError}</FeedbackMessage>
+                    )}
                   </div>
                 )}
 
