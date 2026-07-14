@@ -2,16 +2,17 @@ import { Badge } from '../ui/Badge'
 import type { WhatsAppTemplate } from '../../types/bot'
 import { getTemplateStatusGroup } from '../../lib/templateList'
 
-const STATUS_LABELS: Record<string, { label: string; variant: 'success' | 'warning' | 'danger' | 'default' }> = {
+const STATUS_LABELS: Record<string, { label: string; variant: 'success' | 'warning' | 'danger' | 'default' | 'info' }> = {
   approved: { label: 'Approved', variant: 'success' },
   pending: { label: 'Pending', variant: 'warning' },
   rejected: { label: 'Rejected', variant: 'danger' },
-  disabled: { label: 'Disabled', variant: 'default' },
+  draft: { label: 'Draft', variant: 'default' },
+  disabled: { label: 'Disabled', variant: 'danger' },
 }
 
 export function TemplateStatusBadge({ template }: { template: WhatsAppTemplate }) {
   const group = getTemplateStatusGroup(template)
-  const config = STATUS_LABELS[group]
+  const config = STATUS_LABELS[group] ?? STATUS_LABELS.draft
   return <Badge variant={config.variant} dot>{config.label}</Badge>
 }
 

@@ -46,7 +46,7 @@ function RailLink({
       title={item.label}
       className={({ isActive }) =>
         cn(
-          'group relative flex w-full flex-col items-center gap-1 px-1 py-2 transition-colors',
+          'group relative flex w-full flex-col items-center gap-0.5 px-1 py-2.5 transition-colors',
           isActive ? 'text-white' : 'text-white/85 hover:text-white',
         )
       }
@@ -124,7 +124,7 @@ export function CrmIconRail({
           <RailLink key={item.to} item={item} onNavigate={onNavigate} />
         ))}
 
-        <div className="flex justify-center px-2 pb-3 pt-1">
+        <div className="flex justify-center px-2 pb-4 pt-2">
           <button
             type="button"
             onClick={onUserClick}

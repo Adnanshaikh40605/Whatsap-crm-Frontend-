@@ -44,6 +44,25 @@ export function TemplateDetailPage() {
     onError: () => toast.error('Failed to refresh template'),
   })
 
+  const submitMutation = useMutation({
+    mutationFn: () => campaignApi.submitTemplate(id!),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['template', id] })
+      queryClient.invalidateQueries({ queryKey: ['templates'] })
+      toast.success('Template submitted to Meta for review')
+    },
+    onError: (err: { response?: { data?: { message?: string | Record<string, unknown>; error?: unknown } } }) => {
+      const data = err.response?.data
+      const nested = data?.error as { submit_to_meta?: string[]; error?: { message?: string }; message?: string } | undefined
+      const text = (Array.isArray(nested?.submit_to_meta) && nested.submit_to_meta[0])
+        || nested?.error?.message
+        || (typeof data?.message === 'string' ? data.message : undefined)
+        || nested?.message
+        || 'Failed to submit template to Meta'
+      toast.error(String(text))
+    },
+  })
+
   const testMutation = useMutation({
     mutationFn: () => campaignApi.sendTestTemplate(id!, { phone: testPhone.trim() }),
     onSuccess: () => toast.success('Test message sent'),
@@ -101,6 +120,11 @@ export function TemplateDetailPage() {
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
+          {statusGroup === 'draft' && (
+            <Button loading={submitMutation.isPending} onClick={() => submitMutation.mutate()}>
+              <Send className="h-4 w-4" /> Submit to Meta
+            </Button>
+          )}
           <Link to={`/whatsapp-crm/templates/new?duplicate=${template.id}`}>
             <Button variant="secondary"><Copy className="h-4 w-4" /> Duplicate</Button>
           </Link>

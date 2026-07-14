@@ -167,8 +167,20 @@ export function CreateTemplatePage() {
       setTimeout(() => navigate('/whatsapp-crm/templates'), 1500)
     } catch (err: unknown) {
       setSubmitPhase('error')
-      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message
-      setSubmitError(msg || 'Failed to create template. Check Meta credentials and try again.')
+      const data = (err as { response?: { data?: Record<string, unknown> } })?.response?.data || {}
+      const errObj = (data.error || data) as Record<string, unknown>
+      const submitField = errObj.submit_to_meta
+      let text = 'Failed to create template. Check Meta credentials and try again.'
+      if (Array.isArray(submitField) && submitField[0]) {
+        text = String(submitField[0])
+      } else if (typeof data.message === 'string') {
+        text = data.message
+      } else if (typeof errObj.message === 'string') {
+        text = errObj.message
+      } else if (errObj.error && typeof errObj.error === 'object') {
+        text = String((errObj.error as { message?: string }).message || JSON.stringify(errObj.error))
+      }
+      setSubmitError(text)
     }
   }
 

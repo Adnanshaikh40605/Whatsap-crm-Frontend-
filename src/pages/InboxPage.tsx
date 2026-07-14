@@ -5,9 +5,10 @@ import {
   Bold, Italic, Strikethrough,
 } from 'lucide-react'
 import { inboxApi } from '../lib/api'
-import { cn, formatChatTime, formatMessageTime } from '../lib/utils'
+import { cn, formatChatTime } from '../lib/utils'
 import { WA, CHAT_WALLPAPER } from '../lib/whatsappTheme'
 import { MessageDeliveryTicks } from '../components/inbox/MessageDeliveryTicks'
+import { ChatMessageBubble } from '../components/inbox/ChatMessageBubble'
 import { useInboxSocket, resolveConversationId, mergeDeliveryStatus, sortConversationsByRecent, type InboxSocketEvent, type InboxSocketMessage } from '../hooks/useInboxSocket'
 import { useAuth } from '../context/AuthContext'
 import type { Conversation } from '../types'
@@ -411,27 +412,13 @@ export function InboxPage() {
                       key={msg.id}
                       className={cn('flex py-0.5', isOutbound ? 'justify-end' : 'justify-start')}
                     >
-                      <div
-                        className={cn(
-                          'w-fit max-w-[min(82%,42rem)] rounded-lg px-2.5 py-1.5 text-[14.2px] leading-[19px] shadow-sm',
-                          isOutbound
-                            ? 'rounded-tr-none bg-[#d9fdd3] text-[#111b21]'
-                            : 'rounded-tl-none bg-white text-[#111b21]',
-                        )}
-                      >
-                        <div className="whitespace-pre-wrap break-words text-left">
-                          {msg.content}
-                        </div>
-                        <div className="mt-0.5 flex items-center justify-end gap-1 pl-6">
-                          <span className="text-[11px] leading-none text-[#667781]">
-                            {formatMessageTime(msg.created_at)}
-                          </span>
-                          {isOutbound && <MessageDeliveryTicks status={msg.status} compact />}
-                        </div>
-                        {isOutbound && msg.status === 'failed' && msg.error_reason && (
-                          <p className="mt-1 text-right text-[11px] text-red-600">{msg.error_reason}</p>
-                        )}
-                      </div>
+                      <ChatMessageBubble
+                        content={msg.content}
+                        createdAt={msg.created_at}
+                        isOutbound={isOutbound}
+                        status={msg.status}
+                        errorReason={msg.error_reason}
+                      />
                     </div>
                   )
                 })}

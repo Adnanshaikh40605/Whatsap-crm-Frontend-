@@ -1,6 +1,6 @@
 import type { WhatsAppTemplate } from '../types/bot'
 
-export type TemplateStatusGroup = 'approved' | 'pending' | 'rejected' | 'disabled'
+export type TemplateStatusGroup = 'approved' | 'pending' | 'rejected' | 'draft' | 'disabled'
 export type StatusFilter = 'all' | TemplateStatusGroup
 export type CategoryFilter = 'all' | 'marketing' | 'utility' | 'authentication' | 'media'
 
@@ -8,7 +8,8 @@ const STATUS_ORDER: Record<TemplateStatusGroup, number> = {
   approved: 0,
   pending: 1,
   rejected: 2,
-  disabled: 3,
+  draft: 3,
+  disabled: 4,
 }
 
 export function isMediaTemplate(t: WhatsAppTemplate) {
@@ -19,13 +20,24 @@ export function isMediaTemplate(t: WhatsAppTemplate) {
     || Boolean(t.media_asset)
 }
 
+/**
+ * Map CRM + Meta status into a display group.
+ * Draft = saved locally, not (yet) submitted to Meta.
+ * Disabled = Meta-disabled / paused / deleted only — never drafts.
+ */
 export function getTemplateStatusGroup(t: WhatsAppTemplate): TemplateStatusGroup {
   const meta = String(t.meta_status || '').toUpperCase()
   if (meta === 'DISABLED' || meta === 'PAUSED' || meta === 'DELETED') return 'disabled'
-  if (t.status === 'approved') return 'approved'
-  if (t.status === 'pending') return 'pending'
-  if (t.status === 'rejected') return 'rejected'
-  return 'disabled'
+
+  const status = String(t.status || '').toLowerCase()
+  if (status === 'approved') return 'approved'
+  if (status === 'pending') return 'pending'
+  if (status === 'rejected') return 'rejected'
+  if (status === 'draft' || !status) return 'draft'
+
+  // Unknown local status with a Meta ID is treated as pending review
+  if (t.whatsapp_template_id) return 'pending'
+  return 'draft'
 }
 
 export function sortTemplates(templates: WhatsAppTemplate[]): WhatsAppTemplate[] {
@@ -85,6 +97,7 @@ export function computeTemplateStats(templates: WhatsAppTemplate[]) {
     approved: templates.filter((t) => getTemplateStatusGroup(t) === 'approved').length,
     pending: templates.filter((t) => getTemplateStatusGroup(t) === 'pending').length,
     rejected: templates.filter((t) => getTemplateStatusGroup(t) === 'rejected').length,
+    draft: templates.filter((t) => getTemplateStatusGroup(t) === 'draft').length,
     disabled: templates.filter((t) => getTemplateStatusGroup(t) === 'disabled').length,
   }
 }
@@ -101,9 +114,10 @@ export function groupTemplatesByStatus(templates: WhatsAppTemplate[]) {
   const sorted = sortTemplates(templates)
   const groups: { key: TemplateStatusGroup; label: string; items: WhatsAppTemplate[] }[] = [
     { key: 'approved', label: 'Approved', items: [] },
-    { key: 'pending', label: 'Pending', items: [] },
+    { key: 'pending', label: 'Pending Meta Review', items: [] },
     { key: 'rejected', label: 'Rejected', items: [] },
-    { key: 'disabled', label: 'Disabled / Draft', items: [] },
+    { key: 'draft', label: 'Draft', items: [] },
+    { key: 'disabled', label: 'Disabled by Meta', items: [] },
   ]
   for (const template of sorted) {
     const group = getTemplateStatusGroup(template)

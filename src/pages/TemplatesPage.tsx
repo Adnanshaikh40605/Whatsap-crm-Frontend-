@@ -20,6 +20,7 @@ import {
   computeTemplateStats,
   exportTemplatesJson,
   getLatestSyncTime,
+  getTemplateStatusGroup,
   groupTemplatesByStatus,
   matchesFilters,
   matchesSearch,
@@ -32,6 +33,7 @@ const STATUS_FILTERS: { id: StatusFilter; label: string }[] = [
   { id: 'all', label: 'All' },
   { id: 'approved', label: 'Approved' },
   { id: 'pending', label: 'Pending' },
+  { id: 'draft', label: 'Draft' },
   { id: 'rejected', label: 'Rejected' },
   { id: 'disabled', label: 'Disabled' },
 ]
@@ -67,18 +69,23 @@ function RowActionsMenu({
   onView,
   onDuplicate,
   onRefresh,
+  onSubmit,
   onDelete,
   refreshing,
+  submitting,
 }: {
   template: WhatsAppTemplate
   onView: () => void
   onDuplicate: () => void
   onRefresh: () => void
+  onSubmit: () => void
   onDelete: () => void
   refreshing: boolean
+  submitting: boolean
 }) {
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
+  const isDraft = template.status === 'draft' || getTemplateStatusGroup(template) === 'draft'
 
   useEffect(() => {
     const close = (e: MouseEvent) => {
@@ -106,7 +113,7 @@ function RowActionsMenu({
         >
           {[
             { icon: Eye, label: 'View', action: onView },
-            ...(template.status === 'draft' ? [{ icon: Send, label: 'Submit', action: () => {} }] : []),
+            ...(isDraft ? [{ icon: Send, label: submitting ? 'Submitting…' : 'Submit to Meta', action: onSubmit }] : []),
             { icon: Copy, label: 'Duplicate', action: onDuplicate },
             { icon: RefreshCw, label: refreshing ? 'Refreshing…' : 'Refresh', action: onRefresh },
             { icon: ExternalLink, label: 'Open in Meta', action: () => window.open(META_URL, '_blank') },
@@ -129,15 +136,17 @@ function RowActionsMenu({
 }
 
 function TemplateRow({
-  template, selected, onSelect, onOpen, onRefresh, onDelete, refreshing,
+  template, selected, onSelect, onOpen, onRefresh, onSubmit, onDelete, refreshing, submitting,
 }: {
   template: WhatsAppTemplate
   selected: boolean
   onSelect: (checked: boolean) => void
   onOpen: () => void
   onRefresh: () => void
+  onSubmit: () => void
   onDelete: () => void
   refreshing: boolean
+  submitting: boolean
 }) {
   const navigate = useNavigate()
   return (
@@ -165,8 +174,10 @@ function TemplateRow({
           onView={onOpen}
           onDuplicate={() => navigate(`/whatsapp-crm/templates/new?duplicate=${template.id}`)}
           onRefresh={onRefresh}
+          onSubmit={onSubmit}
           onDelete={onDelete}
           refreshing={refreshing}
+          submitting={submitting}
         />
       </td>
     </tr>
@@ -278,6 +289,24 @@ export function TemplatesPage() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['templates'] }),
   })
 
+  const submitMutation = useMutation({
+    mutationFn: (id: string) => campaignApi.submitTemplate(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['templates'] })
+      toast.success('Template submitted to Meta for review')
+    },
+    onError: (err: { response?: { data?: { message?: string | Record<string, unknown>; error?: unknown } } }) => {
+      const data = err.response?.data
+      const nested = data?.error as { submit_to_meta?: string[]; error?: { message?: string }; message?: string } | undefined
+      const text = (Array.isArray(nested?.submit_to_meta) && nested.submit_to_meta[0])
+        || nested?.error?.message
+        || (typeof data?.message === 'string' ? data.message : undefined)
+        || nested?.message
+        || 'Failed to submit template to Meta'
+      toast.error(String(text))
+    },
+  })
+
   const deleteMutation = useMutation({
     mutationFn: (id: string) => campaignApi.deleteTemplate(id),
     onSuccess: () => {
@@ -354,6 +383,7 @@ export function TemplatesPage() {
     { label: 'Media', value: stats.media, icon: Image, color: 'text-[#1876f2] bg-blue-50' },
     { label: 'Approved', value: stats.approved, icon: FileText, color: 'text-green-700 bg-green-50' },
     { label: 'Pending', value: stats.pending, icon: FileText, color: 'text-amber-700 bg-amber-50' },
+    { label: 'Draft', value: stats.draft, icon: FileText, color: 'text-slate-700 bg-slate-100' },
     { label: 'Rejected', value: stats.rejected, icon: FileText, color: 'text-red-700 bg-red-50' },
   ]
 
@@ -379,7 +409,7 @@ export function TemplatesPage() {
         }
       />
 
-      <div className="mb-5 grid gap-3 grid-cols-2 sm:grid-cols-4 xl:grid-cols-8">
+      <div className="mb-5 grid gap-3 grid-cols-2 sm:grid-cols-4 xl:grid-cols-9">
         {statCards.map(({ label, value, icon: Icon, color }) => (
           <div key={label} className="surface-card flex items-center gap-2.5 p-3">
             <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${color}`}>
@@ -514,6 +544,7 @@ export function TemplatesPage() {
                           onSelect={(checked) => toggleSelect(template.id, checked)}
                           onOpen={() => openTemplate(template.id)}
                           onRefresh={() => refreshMutation.mutate(template.id)}
+                          onSubmit={() => submitMutation.mutate(template.id)}
                           onDelete={() => requestDelete({
                             itemName: template.name,
                             itemType: 'WhatsApp template',
@@ -522,6 +553,7 @@ export function TemplatesPage() {
                             onConfirm: () => deleteMutation.mutateAsync(template.id),
                           })}
                           refreshing={refreshMutation.isPending}
+                          submitting={submitMutation.isPending}
                         />
                       ))}
                     </Fragment>
