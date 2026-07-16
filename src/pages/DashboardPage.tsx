@@ -5,6 +5,8 @@ import {
   BookOpen, User, Lock, Store, BadgeCheck, Inbox, FolderOpen, ArrowRight,
 } from 'lucide-react'
 import { campaignApi, crmApi, whatsappCrmApi, analyticsApi, inboxApi } from '../lib/api'
+import { fetchAllCampaignTemplates } from '../lib/templateList'
+import { orgQueryKey } from '../lib/queryKeys'
 import { useAuth } from '../context/AuthContext'
 import { formatDate, formatNumber } from '../lib/utils'
 import { ICON, ICON_STROKE } from '../lib/icons'
@@ -24,8 +26,9 @@ export function DashboardPage() {
     queryFn: () => campaignApi.list().then((r) => r.data.results ?? r.data.data ?? r.data),
   })
   const { data: templates } = useQuery({
-    queryKey: ['templates'],
-    queryFn: () => campaignApi.templates().then((r) => r.data.results ?? r.data.data ?? r.data),
+    queryKey: orgQueryKey(organization?.id, 'templates', 'all'),
+    queryFn: fetchAllCampaignTemplates,
+    enabled: Boolean(organization?.id),
   })
   const { data: contacts } = useQuery({
     queryKey: ['contacts'],

@@ -1,8 +1,12 @@
 import type { WhatsAppTemplate } from '../types/bot'
+import { campaignApi } from './api'
 
+/** Status groups used for badges / sorting (includes internal draft & disabled). */
 export type TemplateStatusGroup = 'approved' | 'pending' | 'rejected' | 'draft' | 'disabled'
-export type StatusFilter = 'all' | TemplateStatusGroup
-export type CategoryFilter = 'all' | 'marketing' | 'utility' | 'authentication' | 'media'
+
+/** Filters shown in the Templates UI. */
+export type StatusFilter = 'all' | 'approved' | 'pending' | 'rejected'
+export type CategoryFilter = 'marketing' | 'utility'
 
 const STATUS_ORDER: Record<TemplateStatusGroup, number> = {
   approved: 0,
@@ -10,14 +14,6 @@ const STATUS_ORDER: Record<TemplateStatusGroup, number> = {
   rejected: 2,
   draft: 3,
   disabled: 4,
-}
-
-export function isMediaTemplate(t: WhatsAppTemplate) {
-  const header = t.header as { type?: string; format?: string } | undefined
-  const format = String(header?.format || header?.type || '').toUpperCase()
-  return ['IMAGE', 'VIDEO', 'DOCUMENT', 'CAROUSEL'].includes(format)
-    || t.template_type === 'carousel'
-    || Boolean(t.media_asset)
 }
 
 /**
@@ -35,9 +31,15 @@ export function getTemplateStatusGroup(t: WhatsAppTemplate): TemplateStatusGroup
   if (status === 'rejected') return 'rejected'
   if (status === 'draft' || !status) return 'draft'
 
-  // Unknown local status with a Meta ID is treated as pending review
   if (t.whatsapp_template_id) return 'pending'
   return 'draft'
+}
+
+/** Map internal status → UI filter bucket (only Approved / Pending / Rejected). */
+function toFilterStatus(group: TemplateStatusGroup): Exclude<StatusFilter, 'all'> {
+  if (group === 'approved') return 'approved'
+  if (group === 'rejected' || group === 'disabled') return 'rejected'
+  return 'pending' // pending + draft
 }
 
 export function sortTemplates(templates: WhatsAppTemplate[]): WhatsAppTemplate[] {
@@ -68,38 +70,18 @@ export function matchesFilters(
   categoryFilters: Set<CategoryFilter>,
 ) {
   const statusActive = [...statusFilters].filter((f) => f !== 'all')
-  const categoryActive = [...categoryFilters].filter((f) => f !== 'all')
+  const categoryActive = [...categoryFilters]
 
   if (statusActive.length > 0) {
-    const group = getTemplateStatusGroup(template)
-    if (!statusActive.includes(group)) return false
+    const bucket = toFilterStatus(getTemplateStatusGroup(template))
+    if (!statusActive.includes(bucket)) return false
   }
 
   if (categoryActive.length > 0) {
-    const isMedia = isMediaTemplate(template)
-    const categoryMatch = categoryActive.some((filter) => {
-      if (filter === 'media') return isMedia
-      return template.category === filter
-    })
-    if (!categoryMatch) return false
+    if (!categoryActive.includes(template.category as CategoryFilter)) return false
   }
 
   return true
-}
-
-export function computeTemplateStats(templates: WhatsAppTemplate[]) {
-  return {
-    total: templates.length,
-    marketing: templates.filter((t) => t.category === 'marketing').length,
-    utility: templates.filter((t) => t.category === 'utility').length,
-    authentication: templates.filter((t) => t.category === 'authentication').length,
-    media: templates.filter(isMediaTemplate).length,
-    approved: templates.filter((t) => getTemplateStatusGroup(t) === 'approved').length,
-    pending: templates.filter((t) => getTemplateStatusGroup(t) === 'pending').length,
-    rejected: templates.filter((t) => getTemplateStatusGroup(t) === 'rejected').length,
-    draft: templates.filter((t) => getTemplateStatusGroup(t) === 'draft').length,
-    disabled: templates.filter((t) => getTemplateStatusGroup(t) === 'disabled').length,
-  }
 }
 
 export function getLatestSyncTime(templates: WhatsAppTemplate[]): string | null {
@@ -110,18 +92,17 @@ export function getLatestSyncTime(templates: WhatsAppTemplate[]): string | null 
   return times.sort((a, b) => new Date(b).getTime() - new Date(a).getTime())[0]
 }
 
+/** Group list sections: Approved / Pending / Rejected only. */
 export function groupTemplatesByStatus(templates: WhatsAppTemplate[]) {
   const sorted = sortTemplates(templates)
-  const groups: { key: TemplateStatusGroup; label: string; items: WhatsAppTemplate[] }[] = [
+  const groups: { key: Exclude<StatusFilter, 'all'>; label: string; items: WhatsAppTemplate[] }[] = [
     { key: 'approved', label: 'Approved', items: [] },
-    { key: 'pending', label: 'Pending Meta Review', items: [] },
+    { key: 'pending', label: 'Pending', items: [] },
     { key: 'rejected', label: 'Rejected', items: [] },
-    { key: 'draft', label: 'Draft', items: [] },
-    { key: 'disabled', label: 'Disabled by Meta', items: [] },
   ]
   for (const template of sorted) {
-    const group = getTemplateStatusGroup(template)
-    groups.find((g) => g.key === group)?.items.push(template)
+    const key = toFilterStatus(getTemplateStatusGroup(template))
+    groups.find((g) => g.key === key)?.items.push(template)
   }
   return groups.filter((g) => g.items.length > 0)
 }
@@ -134,4 +115,40 @@ export function exportTemplatesJson(templates: WhatsAppTemplate[]) {
   link.download = `whatsapp-templates-${new Date().toISOString().slice(0, 10)}.json`
   link.click()
   URL.revokeObjectURL(url)
+}
+
+function extractTemplatePage(payload: unknown): { results: WhatsAppTemplate[]; count: number } {
+  if (Array.isArray(payload)) {
+    return { results: payload as WhatsAppTemplate[], count: payload.length }
+  }
+  const record = payload as { results?: WhatsAppTemplate[]; count?: number; data?: unknown }
+  if (Array.isArray(record?.results)) {
+    return { results: record.results, count: record.count ?? record.results.length }
+  }
+  if (record?.data) return extractTemplatePage(record.data)
+  return { results: [], count: 0 }
+}
+
+/** Fetch every template across paginated API pages (list + duplicate-name checks). */
+export async function fetchAllCampaignTemplates(): Promise<WhatsAppTemplate[]> {
+  const pageSize = 100
+  const merged: WhatsAppTemplate[] = []
+  let page = 1
+  while (true) {
+    const response = await campaignApi.templates({ page, page_size: pageSize })
+    const body = response.data as {
+      data?: unknown
+      results?: WhatsAppTemplate[]
+      count?: number
+      next?: string | null
+    }
+    const payload = (body?.data ?? body) as typeof body
+    const { results, count } = extractTemplatePage(payload)
+    merged.push(...results)
+    const hasNext = Boolean(payload?.next) || (count > 0 && merged.length < count)
+    if (!results.length || !hasNext || results.length < pageSize) break
+    page += 1
+    if (page > 50) break
+  }
+  return merged
 }

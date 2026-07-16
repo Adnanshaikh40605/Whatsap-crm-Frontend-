@@ -1,5 +1,6 @@
 import axios, { type AxiosError, type InternalAxiosRequestConfig } from 'axios'
 import { getApiUrl } from './config'
+import { getActiveOrgId } from './activeOrg'
 
 export const api = axios.create({
   headers: { 'Content-Type': 'application/json' },
@@ -8,7 +9,7 @@ export const api = axios.create({
 api.interceptors.request.use((config: InternalAxiosRequestConfig) => {
   config.baseURL = getApiUrl()
   const token = localStorage.getItem('access_token')
-  const orgId = localStorage.getItem('organization_id')
+  const orgId = getActiveOrgId()
   if (token) config.headers.Authorization = `Bearer ${token}`
   if (orgId) config.headers['X-Organization-ID'] = orgId
   return config
@@ -133,7 +134,7 @@ export const campaignApi = {
     api.post(`/campaigns/${id}/analytics/email-report/`, data),
   retryRecipient: (id: string, recipientId: string) =>
     api.post(`/campaigns/${id}/retry-recipient/`, { recipient_id: recipientId }),
-  templates: () => api.get('/campaigns/templates/'),
+  templates: (params?: Record<string, string | number>) => api.get('/campaigns/templates/', { params }),
   getTemplate: (id: string) => api.get(`/campaigns/templates/${id}/`),
   createTemplate: (data: Record<string, unknown>) => api.post('/campaigns/templates/', data),
   submitTemplate: (id: string) => api.post(`/campaigns/templates/${id}/submit_meta/`),

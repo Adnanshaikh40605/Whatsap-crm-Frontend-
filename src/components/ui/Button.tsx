@@ -22,7 +22,7 @@ const variants = {
     'active:bg-[rgba(10,71,76,0.12)]',
   ].join(' '),
   dark: [
-    'bg-[var(--color-surface-base)] text-[var(--color-text-inverse)]',
+    'bg-[#0a474c] text-[#fbfbfb]',
     'hover:opacity-90',
     'active:opacity-80',
   ].join(' '),
@@ -61,7 +61,7 @@ export function Button({
     >
       {loading && (
         <span
-          className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white"
+          className="h-4 w-4 shrink-0 animate-spin rounded-full border-2 border-current/30 border-t-current"
           aria-hidden
         />
       )}

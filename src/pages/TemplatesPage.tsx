@@ -2,10 +2,11 @@ import { Fragment, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
-  Copy, ExternalLink, Eye, FileText, Image, Megaphone, MoreVertical,
-  Plus, RefreshCw, Search, Send, Shield, Trash2,
+  Copy, ExternalLink, Eye, MoreVertical,
+  Plus, RefreshCw, Search, Send, Trash2,
 } from 'lucide-react'
 import { campaignApi } from '../lib/api'
+import { orgQueryKey } from '../lib/queryKeys'
 import { PageHeader } from '../components/ui/PageLayout'
 import { Button } from '../components/ui/Button'
 import { formatDate, formatMessageTime } from '../lib/utils'
@@ -17,8 +18,8 @@ import {
 import {
   type CategoryFilter,
   type StatusFilter,
-  computeTemplateStats,
   exportTemplatesJson,
+  fetchAllCampaignTemplates,
   getLatestSyncTime,
   getTemplateStatusGroup,
   groupTemplatesByStatus,
@@ -27,21 +28,18 @@ import {
   sortTemplates,
 } from '../lib/templateList'
 import type { WhatsAppTemplate } from '../types/bot'
+import { useAuth } from '../context/AuthContext'
 
 const META_URL = 'https://business.facebook.com/wa/manage/message-templates/'
 const STATUS_FILTERS: { id: StatusFilter; label: string }[] = [
   { id: 'all', label: 'All' },
   { id: 'approved', label: 'Approved' },
   { id: 'pending', label: 'Pending' },
-  { id: 'draft', label: 'Draft' },
   { id: 'rejected', label: 'Rejected' },
-  { id: 'disabled', label: 'Disabled' },
 ]
 const CATEGORY_FILTERS: { id: CategoryFilter; label: string }[] = [
-  { id: 'authentication', label: 'Authentication' },
-  { id: 'utility', label: 'Utility' },
   { id: 'marketing', label: 'Marketing' },
-  { id: 'media', label: 'Media' },
+  { id: 'utility', label: 'Utility' },
 ]
 const PAGE_SIZES = [25, 50, 100] as const
 
@@ -226,6 +224,8 @@ function TemplateMobileCard({
 
 export function TemplatesPage() {
   const navigate = useNavigate()
+  const { organization } = useAuth()
+  const orgId = organization?.id
   const queryClient = useQueryClient()
   const toast = useToast()
   const [search, setSearch] = useState('')
@@ -237,9 +237,11 @@ export function TemplatesPage() {
   const [lastSyncLabel, setLastSyncLabel] = useState<string | null>(null)
   const { requestDelete, deleteDialog } = useDeleteConfirm()
 
-  const { data, isLoading } = useQuery({
-    queryKey: ['templates'],
-    queryFn: () => campaignApi.templates().then((r) => r.data.results ?? r.data.data ?? r.data),
+  const { data, isLoading, isFetching } = useQuery({
+    queryKey: orgQueryKey(orgId, 'templates', 'all'),
+    queryFn: fetchAllCampaignTemplates,
+    enabled: Boolean(orgId),
+    refetchOnMount: 'always',
     refetchInterval: (query) => {
       const templates = (query.state.data as WhatsAppTemplate[] | undefined) ?? []
       const hasPending = templates.some((t) => t.status === 'pending')
@@ -248,7 +250,6 @@ export function TemplatesPage() {
   })
 
   const allTemplates = (data as WhatsAppTemplate[]) ?? []
-  const stats = useMemo(() => computeTemplateStats(allTemplates), [allTemplates])
 
   const filtered = useMemo(() => {
     const searched = allTemplates.filter((t) => matchesSearch(t, search))
@@ -270,6 +271,14 @@ export function TemplatesPage() {
   }, [grouped, pageItemIdSet])
 
   useEffect(() => {
+    setPage(1)
+    setSelectedIds(new Set())
+    setStatusFilters(new Set(['all']))
+    setCategoryFilters(new Set())
+    setSearch('')
+  }, [orgId])
+
+  useEffect(() => {
     const latest = getLatestSyncTime(allTemplates)
     if (latest) setLastSyncLabel(formatMessageTime(latest))
   }, [allTemplates])
@@ -277,7 +286,7 @@ export function TemplatesPage() {
   const syncMutation = useMutation({
     mutationFn: () => campaignApi.syncTemplates(),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['templates'] })
+      queryClient.invalidateQueries({ queryKey: orgQueryKey(orgId, 'templates') })
       setLastSyncLabel(formatMessageTime(new Date().toISOString()))
       toast.success('Templates synced from Meta')
     },
@@ -286,13 +295,13 @@ export function TemplatesPage() {
 
   const refreshMutation = useMutation({
     mutationFn: (id: string) => campaignApi.refreshTemplate(id),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['templates'] }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: orgQueryKey(orgId, 'templates') }),
   })
 
   const submitMutation = useMutation({
     mutationFn: (id: string) => campaignApi.submitTemplate(id),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['templates'] })
+      queryClient.invalidateQueries({ queryKey: orgQueryKey(orgId, 'templates') })
       toast.success('Template submitted to Meta for review')
     },
     onError: (err: { response?: { data?: { message?: string | Record<string, unknown>; error?: unknown } } }) => {
@@ -310,7 +319,7 @@ export function TemplatesPage() {
   const deleteMutation = useMutation({
     mutationFn: (id: string) => campaignApi.deleteTemplate(id),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['templates'] })
+      queryClient.invalidateQueries({ queryKey: orgQueryKey(orgId, 'templates') })
       setSelectedIds(new Set())
     },
   })
@@ -375,18 +384,6 @@ export function TemplatesPage() {
 
   const openTemplate = (id: string) => navigate(`/whatsapp-crm/templates/${id}`)
 
-  const statCards = [
-    { label: 'Total', value: stats.total, icon: FileText, color: 'text-slate-700 bg-slate-100' },
-    { label: 'Marketing', value: stats.marketing, icon: Megaphone, color: 'text-[#0064e0] bg-blue-50' },
-    { label: 'Utility', value: stats.utility, icon: FileText, color: 'text-slate-700 bg-slate-100' },
-    { label: 'Authentication', value: stats.authentication, icon: Shield, color: 'text-purple-700 bg-purple-50' },
-    { label: 'Media', value: stats.media, icon: Image, color: 'text-[#1876f2] bg-blue-50' },
-    { label: 'Approved', value: stats.approved, icon: FileText, color: 'text-green-700 bg-green-50' },
-    { label: 'Pending', value: stats.pending, icon: FileText, color: 'text-amber-700 bg-amber-50' },
-    { label: 'Draft', value: stats.draft, icon: FileText, color: 'text-slate-700 bg-slate-100' },
-    { label: 'Rejected', value: stats.rejected, icon: FileText, color: 'text-red-700 bg-red-50' },
-  ]
-
   return (
     <div className="space-y-4">
       <PageHeader
@@ -402,26 +399,17 @@ export function TemplatesPage() {
             <Link to="/whatsapp-crm/templates/new">
               <Button><Plus className="h-4 w-4" /> Create Template</Button>
             </Link>
-            <Button variant="dark" loading={syncMutation.isPending} onClick={() => syncMutation.mutate()}>
-              <RefreshCw className="h-4 w-4" /> Sync from Meta
+            <Button
+              variant="outline"
+              loading={syncMutation.isPending}
+              onClick={() => syncMutation.mutate()}
+            >
+              <RefreshCw className={syncMutation.isPending ? 'h-4 w-4 animate-spin' : 'h-4 w-4'} />
+              Sync from Meta
             </Button>
           </div>
         }
       />
-
-      <div className="mb-5 grid gap-3 grid-cols-2 sm:grid-cols-4 xl:grid-cols-9">
-        {statCards.map(({ label, value, icon: Icon, color }) => (
-          <div key={label} className="surface-card flex items-center gap-2.5 p-3">
-            <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${color}`}>
-              <Icon className="h-4 w-4" />
-            </div>
-            <div className="min-w-0">
-              <p className="text-lg font-bold leading-tight" style={{ color: 'var(--text-primary)' }}>{value}</p>
-              <p className="truncate text-[10px] font-semibold uppercase tracking-wide" style={{ color: 'var(--text-muted)' }}>{label}</p>
-            </div>
-          </div>
-        ))}
-      </div>
 
       <div className="mb-4 space-y-3">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
@@ -493,7 +481,7 @@ export function TemplatesPage() {
         </div>
       )}
 
-      {isLoading ? (
+      {isLoading || (isFetching && !data) ? (
         <p className="py-12 text-center text-sm" style={{ color: 'var(--text-muted)' }}>Loading templates…</p>
       ) : filtered.length === 0 ? (
         <div className="surface-card py-16 text-center">

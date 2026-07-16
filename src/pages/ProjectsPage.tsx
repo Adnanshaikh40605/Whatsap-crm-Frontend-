@@ -11,6 +11,7 @@ import {
 import { useAuth, staffDefaultPath } from '../context/AuthContext'
 import { canManageProjects } from '../lib/rbac'
 import { orgApi } from '../lib/api'
+import { setActiveOrgId } from '../lib/activeOrg'
 import { AppCard, FeedbackMessage } from '../components/common'
 import { ConfirmDialog } from '../components/common/ConfirmDialog'
 import { buildDeleteConfirmMessage } from '../lib/deleteConfirm'
@@ -201,7 +202,7 @@ export function ProjectsPage() {
     try {
       await orgApi.delete(deleteTarget.id, deletePassword)
       if (organization?.id === deleteTarget.id) {
-        localStorage.removeItem('organization_id')
+        setActiveOrgId(null)
       }
       closeDeleteDialog()
       await refreshUser()

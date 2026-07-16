@@ -2,10 +2,13 @@ import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { X, ChevronRight, Check, User, Users } from 'lucide-react'
 import { campaignApi, crmApi } from '../../lib/api'
+import { fetchAllCampaignTemplates } from '../../lib/templateList'
+import { orgQueryKey } from '../../lib/queryKeys'
 import { Button } from '../ui/Button'
 import { Input } from '../ui/Input'
 import { formatScheduleLabel, ScheduleDateTimeField } from '../ui/ScheduleDateTimeField'
 import { FeedbackMessage } from '../common/FeedbackMessage'
+import { useAuth } from '../../context/AuthContext'
 
 const STEPS = ['Campaign Name', 'Audience', 'Template', 'Schedule', 'Review']
 
@@ -25,6 +28,8 @@ interface ContactRow {
 
 export function CampaignWizard({ open, onClose }: Props) {
   const queryClient = useQueryClient()
+  const { organization } = useAuth()
+  const orgId = organization?.id
   const [step, setStep] = useState(0)
   const [form, setForm] = useState({
     name: '',
@@ -37,9 +42,9 @@ export function CampaignWizard({ open, onClose }: Props) {
   })
 
   const { data: templates } = useQuery({
-    queryKey: ['templates'],
-    queryFn: () => campaignApi.templates().then((r) => r.data.results ?? r.data.data ?? r.data),
-    enabled: open,
+    queryKey: orgQueryKey(orgId, 'templates', 'all'),
+    queryFn: fetchAllCampaignTemplates,
+    enabled: open && Boolean(orgId),
     refetchOnMount: 'always',
   })
   const { data: groups } = useQuery({

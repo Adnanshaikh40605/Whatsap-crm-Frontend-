@@ -1,7 +1,24 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react'
+import { flushSync } from 'react-dom'
+import { useQueryClient } from '@tanstack/react-query'
 import { authApi, orgApi } from '../lib/api'
+import { getActiveOrgId, setActiveOrgId } from '../lib/activeOrg'
 import { isStaffUser, staffDefaultPath } from '../lib/rbac'
 import type { Organization, User } from '../types'
+
+function resolveActiveOrganization(
+  storedOrgId: string | null,
+  currentOrg: Organization | null | undefined,
+  orgList: Organization[],
+): Organization | null {
+  // User's persisted project choice wins over API default membership.
+  if (storedOrgId) {
+    const fromStorage = orgList.find((org) => org.id === storedOrgId)
+    if (fromStorage) return fromStorage
+  }
+  if (currentOrg) return currentOrg
+  return orgList.length > 0 ? orgList[0] : null
+}
 
 interface AuthContextType {
   user: User | null
@@ -27,6 +44,7 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | null>(null)
 
 export function AuthProvider({ children }: { children: ReactNode }) {
+  const queryClient = useQueryClient()
   const [user, setUser] = useState<User | null>(null)
   const [organization, setOrganization] = useState<Organization | null>(null)
   const [organizations, setOrganizations] = useState<Organization[]>([])
@@ -49,18 +67,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(meUser)
       const orgPayload = orgsRes.data
       const orgList = orgPayload.results ?? orgPayload.data ?? orgPayload
-      setOrganizations(Array.isArray(orgList) ? orgList : [])
-      if (currentRes?.data?.data) {
-        setOrganization(currentRes.data.data)
-        localStorage.setItem('organization_id', currentRes.data.data.id)
-      } else if (Array.isArray(orgList) && orgList.length > 0) {
-        setOrganization(orgList[0])
-        localStorage.setItem('organization_id', orgList[0].id)
+      const organizations = Array.isArray(orgList) ? orgList : []
+      setOrganizations(organizations)
+
+      const storedOrgId = localStorage.getItem('organization_id')
+      const currentOrg = currentRes?.data?.data as Organization | undefined
+      const activeOrg = resolveActiveOrganization(storedOrgId, currentOrg, organizations)
+
+      if (activeOrg) {
+        flushSync(() => {
+          setOrganization(activeOrg)
+          setActiveOrgId(activeOrg.id)
+        })
       } else {
-        setOrganization(null)
+        flushSync(() => {
+          setOrganization(null)
+          setActiveOrgId(null)
+        })
       }
     } catch {
       localStorage.clear()
+      setActiveOrgId(null)
     } finally {
       setLoading(false)
     }
@@ -100,24 +127,34 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const logout = () => {
     localStorage.clear()
     sessionStorage.clear()
+    setActiveOrgId(null)
     setUser(null)
     setOrganization(null)
     setOrganizations([])
+    queryClient.clear()
   }
 
   const switchOrganization = async (id: string, projectPassword?: string) => {
-    localStorage.setItem('organization_id', id)
-    const { data } = await orgApi.switch(id, projectPassword)
-    const org = data.data ?? data
-    setOrganization(org)
-    setOrganizations((items) => {
-      const exists = items.some((item) => item.id === org.id)
-      return exists ? items.map((item) => (item.id === org.id ? org : item)) : [...items, org]
-    })
-    localStorage.setItem('organization_id', org.id)
-    const meRes = await authApi.me()
-    setUser(meRes.data?.data ?? meRes.data)
-    return org
+    const previousOrgId = getActiveOrgId()
+    try {
+      const { data } = await orgApi.switch(id, projectPassword)
+      const org = data.data ?? data
+      flushSync(() => {
+        setOrganization(org)
+        setActiveOrgId(org.id)
+        setOrganizations((items) => {
+          const exists = items.some((item) => item.id === org.id)
+          return exists ? items.map((item) => (item.id === org.id ? org : item)) : [...items, org]
+        })
+      })
+      queryClient.clear()
+      const meRes = await authApi.me()
+      setUser(meRes.data?.data ?? meRes.data)
+      return org
+    } catch (err) {
+      setActiveOrgId(previousOrgId)
+      throw err
+    }
   }
 
   const isSuperAdmin = Boolean(user?.is_superuser)

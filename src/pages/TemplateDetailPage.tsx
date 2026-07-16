@@ -11,6 +11,8 @@ import { TemplatePreview } from '../components/templates/TemplatePreview'
 import { TemplateCategoryBadge, TemplateQualityBadge, TemplateStatusBadge } from '../components/templates/TemplateBadges'
 import { templateToPreviewForm } from '../lib/templateBuilder'
 import { getTemplateStatusGroup } from '../lib/templateList'
+import { orgQueryKey } from '../lib/queryKeys'
+import { useAuth } from '../context/AuthContext'
 import { formatDate } from '../lib/utils'
 import { useDeleteConfirm } from '../hooks/useDeleteConfirm'
 import { useToast } from '../components/common'
@@ -21,15 +23,17 @@ const META_URL = 'https://business.facebook.com/wa/manage/message-templates/'
 export function TemplateDetailPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
+  const { organization } = useAuth()
+  const orgId = organization?.id
   const queryClient = useQueryClient()
   const toast = useToast()
   const { requestDelete, deleteDialog } = useDeleteConfirm()
   const [testPhone, setTestPhone] = useState('919372792693')
 
   const { data, isLoading, isError } = useQuery({
-    queryKey: ['template', id],
+    queryKey: orgQueryKey(orgId, 'template', id),
     queryFn: () => campaignApi.getTemplate(id!).then((r) => r.data.data ?? r.data),
-    enabled: Boolean(id),
+    enabled: Boolean(id && orgId),
   })
 
   const template = data as WhatsAppTemplate | undefined
@@ -37,8 +41,8 @@ export function TemplateDetailPage() {
   const refreshMutation = useMutation({
     mutationFn: () => campaignApi.refreshTemplate(id!),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['template', id] })
-      queryClient.invalidateQueries({ queryKey: ['templates'] })
+      queryClient.invalidateQueries({ queryKey: orgQueryKey(orgId, 'template', id) })
+      queryClient.invalidateQueries({ queryKey: orgQueryKey(orgId, 'templates') })
       toast.success('Template status refreshed')
     },
     onError: () => toast.error('Failed to refresh template'),
@@ -47,8 +51,8 @@ export function TemplateDetailPage() {
   const submitMutation = useMutation({
     mutationFn: () => campaignApi.submitTemplate(id!),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['template', id] })
-      queryClient.invalidateQueries({ queryKey: ['templates'] })
+      queryClient.invalidateQueries({ queryKey: orgQueryKey(orgId, 'template', id) })
+      queryClient.invalidateQueries({ queryKey: orgQueryKey(orgId, 'templates') })
       toast.success('Template submitted to Meta for review')
     },
     onError: (err: { response?: { data?: { message?: string | Record<string, unknown>; error?: unknown } } }) => {
@@ -74,7 +78,7 @@ export function TemplateDetailPage() {
   const deleteMutation = useMutation({
     mutationFn: () => campaignApi.deleteTemplate(id!),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['templates'] })
+      queryClient.invalidateQueries({ queryKey: orgQueryKey(orgId, 'templates') })
       navigate('/whatsapp-crm/templates')
     },
   })
@@ -253,8 +257,8 @@ export function TemplateDetailPage() {
           )}
         </div>
 
-        <div className="surface-card flex justify-center self-start p-3 lg:sticky lg:top-4">
-          <TemplatePreview form={previewForm} businessName="WhatsApp Business" compact />
+        <div className="surface-card flex justify-center self-start p-4 lg:sticky lg:top-4">
+          <TemplatePreview form={previewForm} businessName="Driver On Hire" />
         </div>
       </div>
       {deleteDialog}

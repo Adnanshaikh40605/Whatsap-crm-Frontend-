@@ -11,9 +11,12 @@ import {
   INITIAL_TEMPLATE_FORM,
   TEMPLATE_PRESETS,
   buildTemplatePayload,
+  canAddButtonType,
   extractVariableNumbers,
+  getButtonAddState,
   insertNextVariable,
   isTemplateFormValid,
+  normalizeTemplateName,
   templateToPreviewForm,
   validateTemplateForm,
   type FieldError,
@@ -24,6 +27,9 @@ import { TemplatePreview } from '../components/templates/TemplatePreview'
 import { Button } from '../components/ui/Button'
 import { useDeleteConfirm } from '../hooks/useDeleteConfirm'
 import { FeedbackMessage, useToast } from '../components/common'
+import { fetchAllCampaignTemplates } from '../lib/templateList'
+import { orgQueryKey } from '../lib/queryKeys'
+import { useAuth } from '../context/AuthContext'
 import type { WhatsAppTemplate } from '../types/bot'
 
 const WIZARD_STEPS = [
@@ -49,6 +55,8 @@ function FieldHint({ error }: { error?: string }) {
 export function CreateTemplatePage() {
   const navigate = useNavigate()
   const toast = useToast()
+  const { organization } = useAuth()
+  const orgId = organization?.id
   const queryClient = useQueryClient()
   const [searchParams] = useSearchParams()
   const [step, setStep] = useState(0)
@@ -60,14 +68,17 @@ export function CreateTemplatePage() {
   const fieldRefs = useRef<Record<string, HTMLElement | null>>({})
 
   const { data: templatesData } = useQuery({
-    queryKey: ['templates'],
-    queryFn: () => campaignApi.templates().then((r) => r.data.results ?? r.data.data ?? r.data),
+    queryKey: orgQueryKey(orgId, 'templates', 'all'),
+    queryFn: fetchAllCampaignTemplates,
+    enabled: Boolean(orgId),
   })
 
   const allTemplates = (templatesData as WhatsAppTemplate[]) ?? []
   const existingNames = allTemplates
     .filter((t) => t.language === form.language)
-    .map((t) => t.name)
+    .map((t) => normalizeTemplateName(t.name))
+
+  const formIsValid = isTemplateFormValid(form, existingNames)
 
   const errors = useMemo(() => validateTemplateForm(form, existingNames), [form, existingNames])
   const errorsByField = useMemo(() => {
@@ -145,6 +156,8 @@ export function CreateTemplatePage() {
   const handleSubmit = async (submitToMeta: boolean) => {
     const allErrors = validateTemplateForm(form, existingNames)
     if (allErrors.length) {
+      setSubmitPhase('error')
+      setSubmitError(allErrors.map((e) => e.message).join(' '))
       scrollToField(allErrors[0].field)
       setStep(allErrors[0].field === 'name' ? 0 : allErrors[0].field.startsWith('header') ? 1 : 2)
       return
@@ -163,15 +176,18 @@ export function CreateTemplatePage() {
       }
 
       setSubmitPhase('completed')
-      queryClient.invalidateQueries({ queryKey: ['templates'] })
+      queryClient.invalidateQueries({ queryKey: orgQueryKey(orgId, 'templates') })
       setTimeout(() => navigate('/whatsapp-crm/templates'), 1500)
     } catch (err: unknown) {
       setSubmitPhase('error')
       const data = (err as { response?: { data?: Record<string, unknown> } })?.response?.data || {}
       const errObj = (data.error || data) as Record<string, unknown>
       const submitField = errObj.submit_to_meta
-      let text = 'Failed to create template. Check Meta credentials and try again.'
-      if (Array.isArray(submitField) && submitField[0]) {
+      const nameField = errObj.name
+      let text = 'Failed to create template. Please try again.'
+      if (Array.isArray(nameField) && nameField[0]) {
+        text = String(nameField[0])
+      } else if (Array.isArray(submitField) && submitField[0]) {
         text = String(submitField[0])
       } else if (typeof data.message === 'string') {
         text = data.message
@@ -191,11 +207,16 @@ export function CreateTemplatePage() {
     }))
   }
 
+  const buttonAddState = useMemo(() => getButtonAddState(form.buttons), [form.buttons])
+
   const addButton = (type: TemplateButton['type']) => {
-    setForm((prev) => ({
-      ...prev,
-      buttons: [...prev.buttons, { id: newButtonId(), type, text: '', value: '' }],
-    }))
+    setForm((prev) => {
+      if (!canAddButtonType(prev.buttons, type)) return prev
+      return {
+        ...prev,
+        buttons: [...prev.buttons, { id: newButtonId(), type, text: '', value: '' }],
+      }
+    })
   }
 
   const updateButton = (id: string, patch: Partial<TemplateButton>) => {
@@ -225,13 +246,18 @@ export function CreateTemplatePage() {
           </div>
         </div>
         <div className="hidden gap-2 sm:flex">
-          <Button variant="ghost" onClick={() => handleSubmit(false)} loading={submitPhase === 'creating'}>
+          <Button
+            variant="ghost"
+            onClick={() => handleSubmit(false)}
+            loading={submitPhase === 'creating'}
+            disabled={!formIsValid}
+          >
             <Save className="h-4 w-4" /> Save Draft
           </Button>
           <Button
             onClick={() => handleSubmit(true)}
             loading={['creating', 'submitting', 'waiting'].includes(submitPhase)}
-            disabled={!isTemplateFormValid(form, existingNames)}
+            disabled={!formIsValid}
           >
             <Send className="h-4 w-4" /> Submit to Meta
           </Button>
@@ -462,11 +488,70 @@ export function CreateTemplatePage() {
                 <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
                   Max 2 CTA buttons (Website / Call / Copy Code) OR up to 10 Quick Replies — exactly like Meta.
                 </p>
+                {buttonAddState.usageHint && (
+                  <p className="text-xs font-medium" style={{ color: 'var(--text-muted)' }}>
+                    {buttonAddState.usageHint}
+                  </p>
+                )}
                 <div className="flex flex-wrap gap-2">
-                  <Button size="sm" variant="secondary" type="button" onClick={() => addButton('quick_reply')}>+ Quick Reply</Button>
-                  <Button size="sm" variant="secondary" type="button" onClick={() => addButton('url')}>+ Website</Button>
-                  <Button size="sm" variant="secondary" type="button" onClick={() => addButton('phone_number')}>+ Call Phone</Button>
-                  <Button size="sm" variant="secondary" type="button" onClick={() => addButton('copy_code')}>+ Copy Code</Button>
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    type="button"
+                    disabled={!buttonAddState.canAddQuickReply}
+                    title={!buttonAddState.canAddQuickReply && buttonAddState.ctaCount > 0 ? 'Remove CTA buttons to add quick replies' : undefined}
+                    onClick={() => addButton('quick_reply')}
+                  >
+                    + Quick Reply
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    type="button"
+                    disabled={!buttonAddState.canAddCta}
+                    title={
+                      !buttonAddState.canAddCta && buttonAddState.quickReplyCount > 0
+                        ? 'Remove quick replies to add CTA buttons'
+                        : !buttonAddState.canAddCta
+                          ? 'Maximum 2 CTA buttons allowed'
+                          : undefined
+                    }
+                    onClick={() => addButton('url')}
+                  >
+                    + Website
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    type="button"
+                    disabled={!buttonAddState.canAddCta}
+                    title={
+                      !buttonAddState.canAddCta && buttonAddState.quickReplyCount > 0
+                        ? 'Remove quick replies to add CTA buttons'
+                        : !buttonAddState.canAddCta
+                          ? 'Maximum 2 CTA buttons allowed'
+                          : undefined
+                    }
+                    onClick={() => addButton('phone_number')}
+                  >
+                    + Call Phone
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    type="button"
+                    disabled={!buttonAddState.canAddCta}
+                    title={
+                      !buttonAddState.canAddCta && buttonAddState.quickReplyCount > 0
+                        ? 'Remove quick replies to add CTA buttons'
+                        : !buttonAddState.canAddCta
+                          ? 'Maximum 2 CTA buttons allowed'
+                          : undefined
+                    }
+                    onClick={() => addButton('copy_code')}
+                  >
+                    + Copy Code
+                  </Button>
                 </div>
                 <FieldHint error={errorsByField.buttons} />
 
@@ -587,10 +672,15 @@ export function CreateTemplatePage() {
                 )}
 
                 <div className="flex flex-wrap gap-2 pt-2">
-                  <Button variant="ghost" onClick={() => handleSubmit(false)} loading={submitPhase === 'creating'}>
+                  <Button
+                    variant="ghost"
+                    onClick={() => handleSubmit(false)}
+                    loading={submitPhase === 'creating'}
+                    disabled={!formIsValid}
+                  >
                     <Save className="h-4 w-4" /> Save Draft
                   </Button>
-                  <Button onClick={() => handleSubmit(true)} disabled={!isTemplateFormValid(form, existingNames)} loading={['creating', 'submitting', 'waiting'].includes(submitPhase)}>
+                  <Button onClick={() => handleSubmit(true)} disabled={!formIsValid} loading={['creating', 'submitting', 'waiting'].includes(submitPhase)}>
                     <Send className="h-4 w-4" /> Submit to Meta
                   </Button>
                   <Button variant="secondary" type="button" onClick={() => setForm({ ...INITIAL_TEMPLATE_FORM, ...TEMPLATE_PRESETS.login_otp })}>
@@ -613,8 +703,8 @@ export function CreateTemplatePage() {
           </div>
         </div>
 
-        <div className="sticky top-0 flex w-full shrink-0 items-start justify-center bg-slate-50 px-3 py-6 lg:w-auto lg:min-h-full lg:min-w-[272px]">
-          <TemplatePreview form={form} businessName="Pest Control 99" compact />
+        <div className="sticky top-0 flex w-full shrink-0 items-start justify-center bg-slate-50 px-4 py-6 lg:w-[300px] lg:min-h-full xl:w-[320px]">
+          <TemplatePreview form={form} businessName="Driver On Hire" />
         </div>
       </div>
       {deleteDialog}

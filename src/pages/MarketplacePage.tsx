@@ -2,6 +2,8 @@ import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Download, Check, Bug, Car, Building, Heart, Palmtree, GraduationCap } from 'lucide-react'
 import { onboardingApi } from '../lib/api'
+import { orgQueryKey } from '../lib/queryKeys'
+import { useAuth } from '../context/AuthContext'
 import { PageHeader } from '../components/ui/PageLayout'
 import { Button } from '../components/ui/Button'
 import { cn } from '../lib/utils'
@@ -28,6 +30,8 @@ interface IndustryPack {
 
 export function MarketplacePage() {
   const queryClient = useQueryClient()
+  const { organization } = useAuth()
+  const orgId = organization?.id
   const [installing, setInstalling] = useState<string | null>(null)
 
   const { data, isLoading } = useQuery({
@@ -40,7 +44,7 @@ export function MarketplacePage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['marketplace'] })
       queryClient.invalidateQueries({ queryKey: ['bot-flows'] })
-      queryClient.invalidateQueries({ queryKey: ['templates'] })
+      queryClient.invalidateQueries({ queryKey: orgQueryKey(orgId, 'templates') })
       setInstalling(null)
     },
     onError: () => setInstalling(null),

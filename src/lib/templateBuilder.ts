@@ -118,15 +118,84 @@ export function validateE164(phone: string): string | null {
   return null
 }
 
+export const MAX_CTA_BUTTONS = 2
+export const MAX_QUICK_REPLY_BUTTONS = 10
+
+export function isCtaButtonType(type: ButtonType): boolean {
+  return type !== 'quick_reply'
+}
+
+export function countCtaButtons(buttons: TemplateButton[]): number {
+  return buttons.filter((b) => isCtaButtonType(b.type)).length
+}
+
+export function countQuickReplyButtons(buttons: TemplateButton[]): number {
+  return buttons.filter((b) => b.type === 'quick_reply').length
+}
+
+export interface ButtonAddState {
+  canAddQuickReply: boolean
+  canAddCta: boolean
+  ctaCount: number
+  quickReplyCount: number
+  usageHint: string | null
+}
+
+export function getButtonAddState(buttons: TemplateButton[]): ButtonAddState {
+  const ctaCount = countCtaButtons(buttons)
+  const quickReplyCount = countQuickReplyButtons(buttons)
+
+  if (quickReplyCount > 0) {
+    return {
+      canAddQuickReply: quickReplyCount < MAX_QUICK_REPLY_BUTTONS,
+      canAddCta: false,
+      ctaCount,
+      quickReplyCount,
+      usageHint: `Quick replies: ${quickReplyCount} of ${MAX_QUICK_REPLY_BUTTONS} used. Remove quick replies to add CTA buttons.`,
+    }
+  }
+
+  if (ctaCount > 0) {
+    return {
+      canAddQuickReply: false,
+      canAddCta: ctaCount < MAX_CTA_BUTTONS,
+      ctaCount,
+      quickReplyCount,
+      usageHint:
+        ctaCount >= MAX_CTA_BUTTONS
+          ? `You have used ${MAX_CTA_BUTTONS} of ${MAX_CTA_BUTTONS} CTA buttons. Remove one to add a different type.`
+          : `CTA buttons: ${ctaCount} of ${MAX_CTA_BUTTONS} used.`,
+    }
+  }
+
+  return {
+    canAddQuickReply: true,
+    canAddCta: true,
+    ctaCount: 0,
+    quickReplyCount: 0,
+    usageHint: null,
+  }
+}
+
+export function canAddButtonType(buttons: TemplateButton[], type: ButtonType): boolean {
+  const state = getButtonAddState(buttons)
+  if (type === 'quick_reply') return state.canAddQuickReply
+  return state.canAddCta
+}
+
 export function validateButtons(buttons: TemplateButton[]): string | null {
   if (!buttons.length) return null
   const quickReplies = buttons.filter((b) => b.type === 'quick_reply')
-  const ctas = buttons.filter((b) => b.type !== 'quick_reply')
+  const ctas = buttons.filter((b) => isCtaButtonType(b.type))
   if (quickReplies.length && ctas.length) {
     return 'Use either Quick Reply buttons or CTA buttons, not both.'
   }
-  if (quickReplies.length > 10) return 'Maximum 10 Quick Reply buttons allowed.'
-  if (ctas.length > 2) return 'Maximum 2 CTA buttons allowed.'
+  if (quickReplies.length > MAX_QUICK_REPLY_BUTTONS) {
+    return `Maximum ${MAX_QUICK_REPLY_BUTTONS} Quick Reply buttons allowed.`
+  }
+  if (ctas.length > MAX_CTA_BUTTONS) {
+    return `Maximum ${MAX_CTA_BUTTONS} CTA buttons allowed.`
+  }
   for (const btn of buttons) {
     if (!btn.text.trim()) return 'Every button needs button text.'
     if (btn.text.length > 25) return 'Button text must be 25 characters or fewer.'
