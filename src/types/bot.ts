@@ -33,9 +33,18 @@ export interface BotReply {
   title: string
   reply_type: 'simple' | 'media' | 'interactive'
   content: string
+  media_url: string
+  media_type: 'image' | 'video' | 'audio' | 'document' | ''
+  buttons: Array<{ id?: string; title?: string; text?: string }>
   options: string[]
   bot_flow: string | null
+  node_id: string
+  position_x: number
+  position_y: number
+  next_node_id: string
   is_active: boolean
+  created_at?: string
+  updated_at?: string
 }
 
 export interface WhatsAppTemplate {

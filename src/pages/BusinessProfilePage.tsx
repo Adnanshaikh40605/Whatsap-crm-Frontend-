@@ -195,7 +195,6 @@ export function BusinessProfilePage() {
     form.websites.forEach((site) => {
       if (site && !/^https?:\/\/.+/i.test(site)) errors.push(`Invalid website: ${site}`)
     })
-    if (!form.vertical) errors.push('Select a category')
     if (logoFile && logoFile.size > 5 * 1024 * 1024) errors.push('Logo must be under 5 MB')
     return errors
   }, [form, logoFile])

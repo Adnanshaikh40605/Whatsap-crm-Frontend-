@@ -6,8 +6,8 @@ import {
 } from 'lucide-react'
 import { campaignApi } from '../lib/api'
 import { Button } from '../components/ui/Button'
-import { Input } from '../components/ui/Input'
 import { TemplatePreview } from '../components/templates/TemplatePreview'
+import { TemplateTestSendDrawer } from '../components/templates/TemplateTestSendDrawer'
 import { TemplateCategoryBadge, TemplateQualityBadge, TemplateStatusBadge } from '../components/templates/TemplateBadges'
 import { templateToPreviewForm } from '../lib/templateBuilder'
 import { getTemplateStatusGroup } from '../lib/templateList'
@@ -28,7 +28,7 @@ export function TemplateDetailPage() {
   const queryClient = useQueryClient()
   const toast = useToast()
   const { requestDelete, deleteDialog } = useDeleteConfirm()
-  const [testPhone, setTestPhone] = useState('919372792693')
+  const [testOpen, setTestOpen] = useState(false)
 
   const { data, isLoading, isError } = useQuery({
     queryKey: orgQueryKey(orgId, 'template', id),
@@ -67,14 +67,6 @@ export function TemplateDetailPage() {
     },
   })
 
-  const testMutation = useMutation({
-    mutationFn: () => campaignApi.sendTestTemplate(id!, { phone: testPhone.trim() }),
-    onSuccess: () => toast.success('Test message sent'),
-    onError: (err: { response?: { data?: { message?: string } } }) => {
-      toast.error(err.response?.data?.message || 'Failed to send test message')
-    },
-  })
-
   const deleteMutation = useMutation({
     mutationFn: () => campaignApi.deleteTemplate(id!),
     onSuccess: () => {
@@ -101,6 +93,8 @@ export function TemplateDetailPage() {
   const previewForm = templateToPreviewForm(template)
   const variables = Array.isArray(template.variables) ? template.variables as string[] : []
   const statusGroup = getTemplateStatusGroup(template)
+  const isApproved = template.status === 'approved'
+    || String(template.meta_status || '').toUpperCase() === 'APPROVED'
 
   return (
     <div className="w-full space-y-4 animate-fade-in">
@@ -127,6 +121,11 @@ export function TemplateDetailPage() {
           {statusGroup === 'draft' && (
             <Button loading={submitMutation.isPending} onClick={() => submitMutation.mutate()}>
               <Send className="h-4 w-4" /> Submit to Meta
+            </Button>
+          )}
+          {isApproved && (
+            <Button onClick={() => setTestOpen(true)}>
+              <Send className="h-4 w-4" /> Test Send
             </Button>
           )}
           <Link to={`/whatsapp-crm/templates/new?duplicate=${template.id}`}>
@@ -233,34 +232,18 @@ export function TemplateDetailPage() {
               )}
             </dl>
           </div>
-
-          {template.status === 'approved' && (
-            <div className="surface-card p-5">
-              <h2 className="text-sm font-bold" style={{ color: 'var(--text-primary)' }}>Send Test Message</h2>
-              <p className="mt-1 text-xs" style={{ color: 'var(--text-muted)' }}>
-                Send this approved template to a WhatsApp number for testing.
-              </p>
-              <div className="mt-3 flex flex-col gap-2 sm:flex-row">
-                <Input
-                  label="Phone number"
-                  value={testPhone}
-                  onChange={(e) => setTestPhone(e.target.value)}
-                  placeholder="919372792693"
-                />
-                <div className="flex items-end">
-                  <Button loading={testMutation.isPending} onClick={() => testMutation.mutate()}>
-                    <Send className="h-4 w-4" /> Send Test
-                  </Button>
-                </div>
-              </div>
-            </div>
-          )}
         </div>
 
         <div className="surface-card flex justify-center self-start p-4 lg:sticky lg:top-4">
-          <TemplatePreview form={previewForm} businessName="Driver On Hire" />
+          <TemplatePreview form={previewForm} businessName={organization?.name || 'Your Business'} />
         </div>
       </div>
+
+      <TemplateTestSendDrawer
+        open={testOpen}
+        onClose={() => setTestOpen(false)}
+        template={template}
+      />
       {deleteDialog}
     </div>
   )

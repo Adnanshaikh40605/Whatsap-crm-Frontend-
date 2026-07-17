@@ -9,7 +9,7 @@ import {
   LayoutGrid, MessageSquare, FileText, BarChart2, Send, Settings,
   Building2, Menu as MenuIcon, Sun, Moon, ChevronsUpDown, Check, LogOut,
   Image, BookOpen, Smartphone, GitBranch, CircleDashed, Store, User, History, Code2,
-  ContactRound,
+  ContactRound, Bot,
 } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
 import { useTheme as useColorMode } from '../../context/ThemeContext'
@@ -27,7 +27,8 @@ const WHATSAPP_NAV: NavSection = {
     { to: '/whatsapp-crm/message-logs', icon: History, label: 'History' },
     { to: '/whatsapp-crm/contacts', icon: ContactRound, label: 'Contacts' },
     { to: '/whatsapp-crm/campaigns', icon: Send, label: 'Campaigns' },
-    { to: '/whatsapp-crm/contact-groups', icon: GitBranch, label: 'Flows' },
+    { to: '/whatsapp-crm/bot-replies', icon: Bot, label: 'Bot Replies' },
+    { to: '/whatsapp-crm/bot-flows', icon: GitBranch, label: 'Bot Flows' },
     { to: '/whatsapp-crm/templates', icon: FileText, label: 'Templates' },
     { to: '/whatsapp-crm/media', icon: Image, label: 'Media' },
     { to: '/whatsapp-crm/business-profile', icon: Store, label: 'Profile' },

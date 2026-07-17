@@ -15,6 +15,7 @@ import { useToast } from '../components/common'
 import {
   TemplateCategoryBadge, TemplateQualityBadge, TemplateStatusBadge,
 } from '../components/templates/TemplateBadges'
+import { TemplateTestSendDrawer } from '../components/templates/TemplateTestSendDrawer'
 import {
   type CategoryFilter,
   type StatusFilter,
@@ -68,6 +69,7 @@ function RowActionsMenu({
   onDuplicate,
   onRefresh,
   onSubmit,
+  onTestSend,
   onDelete,
   refreshing,
   submitting,
@@ -77,6 +79,7 @@ function RowActionsMenu({
   onDuplicate: () => void
   onRefresh: () => void
   onSubmit: () => void
+  onTestSend: () => void
   onDelete: () => void
   refreshing: boolean
   submitting: boolean
@@ -84,6 +87,8 @@ function RowActionsMenu({
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
   const isDraft = template.status === 'draft' || getTemplateStatusGroup(template) === 'draft'
+  const isApproved = template.status === 'approved'
+    || String(template.meta_status || '').toUpperCase() === 'APPROVED'
 
   useEffect(() => {
     const close = (e: MouseEvent) => {
@@ -111,6 +116,7 @@ function RowActionsMenu({
         >
           {[
             { icon: Eye, label: 'View', action: onView },
+            ...(isApproved ? [{ icon: Send, label: 'Test Send', action: onTestSend }] : []),
             ...(isDraft ? [{ icon: Send, label: submitting ? 'Submitting…' : 'Submit to Meta', action: onSubmit }] : []),
             { icon: Copy, label: 'Duplicate', action: onDuplicate },
             { icon: RefreshCw, label: refreshing ? 'Refreshing…' : 'Refresh', action: onRefresh },
@@ -134,7 +140,7 @@ function RowActionsMenu({
 }
 
 function TemplateRow({
-  template, selected, onSelect, onOpen, onRefresh, onSubmit, onDelete, refreshing, submitting,
+  template, selected, onSelect, onOpen, onRefresh, onSubmit, onTestSend, onDelete, refreshing, submitting,
 }: {
   template: WhatsAppTemplate
   selected: boolean
@@ -142,6 +148,7 @@ function TemplateRow({
   onOpen: () => void
   onRefresh: () => void
   onSubmit: () => void
+  onTestSend: () => void
   onDelete: () => void
   refreshing: boolean
   submitting: boolean
@@ -173,6 +180,7 @@ function TemplateRow({
           onDuplicate={() => navigate(`/whatsapp-crm/templates/new?duplicate=${template.id}`)}
           onRefresh={onRefresh}
           onSubmit={onSubmit}
+          onTestSend={onTestSend}
           onDelete={onDelete}
           refreshing={refreshing}
           submitting={submitting}
@@ -235,6 +243,7 @@ export function TemplatesPage() {
   const [page, setPage] = useState(1)
   const [pageSize, setPageSize] = useState<(typeof PAGE_SIZES)[number]>(25)
   const [lastSyncLabel, setLastSyncLabel] = useState<string | null>(null)
+  const [testTemplate, setTestTemplate] = useState<WhatsAppTemplate | null>(null)
   const { requestDelete, deleteDialog } = useDeleteConfirm()
 
   const { data, isLoading, isFetching } = useQuery({
@@ -533,6 +542,7 @@ export function TemplatesPage() {
                           onOpen={() => openTemplate(template.id)}
                           onRefresh={() => refreshMutation.mutate(template.id)}
                           onSubmit={() => submitMutation.mutate(template.id)}
+                          onTestSend={() => setTestTemplate(template)}
                           onDelete={() => requestDelete({
                             itemName: template.name,
                             itemType: 'WhatsApp template',
@@ -593,6 +603,11 @@ export function TemplatesPage() {
         </>
       )}
       {deleteDialog}
+      <TemplateTestSendDrawer
+        open={Boolean(testTemplate)}
+        onClose={() => setTestTemplate(null)}
+        template={testTemplate}
+      />
     </div>
   )
 }

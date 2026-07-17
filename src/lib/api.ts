@@ -161,7 +161,11 @@ export const automationApi = {
   toggleBotFlow: (id: string) => api.post(`/automation/bot-flows/${id}/toggle_status/`),
   saveFlow: (id: string, flowData: unknown) => api.post(`/automation/bot-flows/${id}/save_flow/`, { flow_data: flowData }),
   botReplies: (params?: Record<string, string>) => api.get('/automation/bot-replies/', { params }),
+  getBotReply: (id: string) => api.get(`/automation/bot-replies/${id}/`),
   createBotReply: (data: Record<string, unknown>) => api.post('/automation/bot-replies/', data),
+  updateBotReply: (id: string, data: Record<string, unknown>) =>
+    api.patch(`/automation/bot-replies/${id}/`, data),
+  deleteBotReply: (id: string) => api.delete(`/automation/bot-replies/${id}/`),
   createFollowUp: (data: Record<string, unknown>) => api.post('/automation/follow-ups/', data),
   templates: () => api.get('/automation/templates/'),
 }

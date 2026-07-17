@@ -30,6 +30,9 @@ import { SmsDashboardPage } from './pages/SmsDashboardPage'
 import { BusinessProfilePage } from './pages/BusinessProfilePage'
 import { AccountSettingsPage } from './pages/AccountSettingsPage'
 import { ModulePlaceholderPage } from './pages/ModulePlaceholderPage'
+import { BotRepliesPage } from './pages/BotRepliesPage'
+import { BotFlowsPage } from './pages/BotFlowsPage'
+import { FlowBuilderPage } from './pages/FlowBuilderPage'
 
 const queryClient = new QueryClient({
   defaultOptions: { queries: { staleTime: 30_000, retry: 1 } },
@@ -69,6 +72,9 @@ export default function App() {
               <Route path="/whatsapp-crm/setup-guide" element={<WhatsAppApiGuidePage />} />
               <Route path="/whatsapp-crm/settings" element={<SettingsPage />} />
               <Route path="/whatsapp-crm/settings/:section" element={<SettingsPage />} />
+              <Route path="/whatsapp-crm/bot-replies" element={<BotRepliesPage />} />
+              <Route path="/whatsapp-crm/bot-flows" element={<BotFlowsPage />} />
+              <Route path="/whatsapp-crm/bot-flows/:id/builder" element={<FlowBuilderPage />} />
               <Route path="/whatsapp-crm/automation" element={<Navigate to="/whatsapp-crm/dashboard" replace />} />
               <Route path="/whatsapp-crm/reports" element={<Navigate to="/whatsapp-crm/dashboard" replace />} />
 
@@ -98,9 +104,9 @@ export default function App() {
               <Route path="/settings" element={<Navigate to="/whatsapp-crm/settings" replace />} />
               <Route path="/settings/:section" element={<SettingsPage />} />
 
-              <Route path="/bot-flows" element={<Navigate to="/whatsapp-crm/dashboard" replace />} />
-              <Route path="/bot-flows/:id/builder" element={<Navigate to="/whatsapp-crm/dashboard" replace />} />
-              <Route path="/bot-replies" element={<Navigate to="/whatsapp-crm/dashboard" replace />} />
+              <Route path="/bot-flows" element={<Navigate to="/whatsapp-crm/bot-flows" replace />} />
+              <Route path="/bot-flows/:id/builder" element={<FlowBuilderPage />} />
+              <Route path="/bot-replies" element={<Navigate to="/whatsapp-crm/bot-replies" replace />} />
               <Route path="/marketplace" element={<Navigate to="/projects" replace />} />
               <Route path="/analytics" element={<Navigate to="/whatsapp-crm/dashboard" replace />} />
               <Route path="/ai-agent" element={<Navigate to="/whatsapp-crm/dashboard" replace />} />
