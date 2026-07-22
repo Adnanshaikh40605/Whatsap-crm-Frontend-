@@ -132,8 +132,8 @@ function RowMenu({
   }, [open])
 
   const items = [
-    { icon: Eye, label: 'View details', action: onView },
-    { icon: RefreshCw, label: 'Regenerate', action: onRegenerate },
+    { icon: Eye, label: 'View API key', action: onView },
+    { icon: RefreshCw, label: 'Regenerate & reveal', action: onRegenerate },
     { icon: KeyRound, label: keyRecord.is_active ? 'Disable' : 'Enable', action: onToggle },
     { icon: Trash2, label: 'Delete', action: onDelete, danger: true },
   ] as const
@@ -246,10 +246,11 @@ export function ApiKeysPanel() {
       const payload = response.data.data ?? response.data
       setCreatedSecret(payload.secret as string)
       setCreatedKeyName((payload.key as ApiKeyRecord)?.name || '')
+      setDetailKey(null)
       setSecretOpen(true)
       setConfirmRegenerate(null)
       invalidate()
-      toast.success('API key regenerated')
+      toast.success('New API key ready — copy it now')
     },
     onError: () => toast.error('Could not regenerate API key'),
   })
@@ -270,13 +271,17 @@ export function ApiKeysPanel() {
     [keys],
   )
 
-  const copySecret = async () => {
+  const copyText = async (text: string, label = 'Copied') => {
     try {
-      await navigator.clipboard.writeText(createdSecret)
-      toast.success('Copied to clipboard')
+      await navigator.clipboard.writeText(text)
+      toast.success(label)
     } catch {
       toast.error('Could not copy')
     }
+  }
+
+  const copySecret = async () => {
+    await copyText(createdSecret, 'API key copied')
   }
 
   const downloadSecret = () => {
@@ -370,13 +375,24 @@ export function ApiKeysPanel() {
                   </td>
                   <td className="px-4 py-3"><StatusBadge active={key.is_active} /></td>
                   <td className="px-4 py-3">
-                    <RowMenu
-                      keyRecord={key}
-                      onView={() => setDetailKey(key)}
-                      onRegenerate={() => setConfirmRegenerate(key)}
-                      onToggle={() => toggleMutation.mutate({ id: key.id, is_active: !key.is_active })}
-                      onDelete={() => setConfirmDelete(key)}
-                    />
+                    <div className="flex items-center justify-end gap-0.5">
+                      <button
+                        type="button"
+                        title="View API key"
+                        onClick={() => setDetailKey(key)}
+                        className="inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs font-semibold hover:bg-black/5"
+                        style={{ borderColor: 'var(--border)', color: 'var(--text-primary)' }}
+                      >
+                        <Eye className="h-3.5 w-3.5" /> View key
+                      </button>
+                      <RowMenu
+                        keyRecord={key}
+                        onView={() => setDetailKey(key)}
+                        onRegenerate={() => setConfirmRegenerate(key)}
+                        onToggle={() => toggleMutation.mutate({ id: key.id, is_active: !key.is_active })}
+                        onDelete={() => setConfirmDelete(key)}
+                      />
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -502,23 +518,74 @@ export function ApiKeysPanel() {
         </div>
       )}
 
-      {/* Detail / audit panel */}
+      {/* Detail / view API key panel */}
       {detailKey && (
         <div className="fixed inset-0 z-50 flex justify-end bg-black/40">
-          <div className="h-full w-full max-w-md overflow-y-auto p-6 shadow-xl" style={{ background: 'var(--bg-card)' }}>
-            <div className="mb-5 flex items-start justify-between">
+          <div className="flex h-full w-full max-w-md flex-col overflow-y-auto shadow-xl" style={{ background: 'var(--bg-card)' }}>
+            <div className="flex items-start justify-between border-b px-6 py-5" style={{ borderColor: 'var(--border)' }}>
               <div>
-                <h2 className="text-lg font-bold" style={{ color: 'var(--text-primary)' }}>{detailKey.name}</h2>
-                <p className="font-mono text-xs" style={{ color: 'var(--text-muted)' }}>{detailKey.key_prefix}…</p>
+                <p className="text-[11px] font-bold uppercase tracking-wide" style={{ color: 'var(--text-muted)' }}>API key</p>
+                <h2 className="mt-1 text-lg font-bold" style={{ color: 'var(--text-primary)' }}>{detailKey.name}</h2>
+                <div className="mt-2"><StatusBadge active={detailKey.is_active} /></div>
               </div>
-              <button type="button" onClick={() => setDetailKey(null)} className="rounded-lg p-1 hover:bg-black/5">
+              <button type="button" onClick={() => setDetailKey(null)} className="rounded-lg p-1 hover:bg-black/5" aria-label="Close">
                 <X className="h-5 w-5" />
               </button>
             </div>
 
-            <div className="space-y-4 text-sm">
+            <div className="space-y-4 p-6 text-sm">
+              <div className="rounded-xl border p-4" style={{ borderColor: 'var(--border)', background: 'var(--bg-subtle)' }}>
+                <p className="text-xs font-bold uppercase tracking-wide" style={{ color: 'var(--text-muted)' }}>Key prefix</p>
+                <p className="mt-2 break-all font-mono text-base font-semibold" style={{ color: 'var(--text-primary)' }}>
+                  {detailKey.key_prefix}…
+                </p>
+                <button
+                  type="button"
+                  className="mt-3 inline-flex items-center gap-1.5 text-xs font-bold text-brand-600 hover:underline"
+                  onClick={() => copyText(detailKey.key_prefix, 'Prefix copied')}
+                >
+                  <Copy className="h-3.5 w-3.5" /> Copy prefix
+                </button>
+              </div>
+
+              <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-amber-900">
+                <div className="flex items-start gap-2">
+                  <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+                  <div>
+                    <p className="font-semibold">Full secret is not stored</p>
+                    <p className="mt-1 text-xs leading-relaxed text-amber-800">
+                      For security, the complete API key is shown only once when you create or regenerate it.
+                      If you lost it, regenerate to reveal a new full key (the old key stops working).
+                    </p>
+                  </div>
+                </div>
+                <Button
+                  className="mt-4 w-full"
+                  size="sm"
+                  onClick={() => {
+                    setConfirmRegenerate(detailKey)
+                  }}
+                >
+                  <Eye className="h-4 w-4" /> Reveal new full API key
+                </Button>
+              </div>
+
               <div className="rounded-xl border p-4" style={{ borderColor: 'var(--border)' }}>
-                <p className="text-xs font-bold uppercase tracking-wide" style={{ color: 'var(--text-muted)' }}>Audit log</p>
+                <p className="text-xs font-bold uppercase tracking-wide" style={{ color: 'var(--text-muted)' }}>Embed API base</p>
+                <p className="mt-2 break-all font-mono text-xs" style={{ color: 'var(--text-primary)' }}>
+                  {getApiOrigin()}/api/
+                </p>
+                <button
+                  type="button"
+                  className="mt-2 inline-flex items-center gap-1.5 text-xs font-bold text-brand-600 hover:underline"
+                  onClick={() => copyText(`${getApiOrigin()}/api/`, 'API URL copied')}
+                >
+                  <Copy className="h-3.5 w-3.5" /> Copy URL
+                </button>
+              </div>
+
+              <div className="rounded-xl border p-4" style={{ borderColor: 'var(--border)' }}>
+                <p className="text-xs font-bold uppercase tracking-wide" style={{ color: 'var(--text-muted)' }}>Details</p>
                 <dl className="mt-3 space-y-2">
                   {[
                     ['Created', formatDate(detailKey.created_at)],
@@ -528,7 +595,6 @@ export function ApiKeysPanel() {
                     ['Last IP', detailKey.last_used_ip || '—'],
                     ['Expires', detailKey.expires_at ? formatDate(detailKey.expires_at) : 'Never'],
                     ['Scopes', (detailKey.scopes || []).join(', ') || '—'],
-                    ['Status', detailKey.is_active ? 'Active' : 'Inactive'],
                   ].map(([label, value]) => (
                     <div key={label} className="flex justify-between gap-4">
                       <dt style={{ color: 'var(--text-muted)' }}>{label}</dt>
@@ -538,10 +604,7 @@ export function ApiKeysPanel() {
                 </dl>
               </div>
 
-              <div className="flex flex-wrap gap-2">
-                <Button variant="secondary" size="sm" onClick={() => setConfirmRegenerate(detailKey)}>
-                  <RefreshCw className="h-4 w-4" /> Regenerate
-                </Button>
+              <div className="flex flex-wrap gap-2 pt-1">
                 <Button
                   variant="secondary"
                   size="sm"
@@ -560,9 +623,9 @@ export function ApiKeysPanel() {
 
       <ConfirmDialog
         open={!!confirmRegenerate}
-        title="Regenerate API key?"
-        message="The current key will stop working immediately. A new secret will be shown once."
-        confirmLabel="Regenerate"
+        title="Reveal a new full API key?"
+        message="The current key will stop working immediately. A new full secret will be shown once — copy it into PestControl CRM now."
+        confirmLabel="Reveal new key"
         loading={regenerateMutation.isPending}
         onConfirm={() => confirmRegenerate && regenerateMutation.mutate(confirmRegenerate.id)}
         onClose={() => setConfirmRegenerate(null)}
