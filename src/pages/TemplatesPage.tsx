@@ -28,6 +28,7 @@ import {
   matchesSearch,
   sortTemplates,
 } from '../lib/templateList'
+import { explainMetaTemplateError } from '../lib/templateGuidance'
 import type { WhatsAppTemplate } from '../types/bot'
 import { useAuth } from '../context/AuthContext'
 
@@ -294,10 +295,21 @@ export function TemplatesPage() {
 
   const syncMutation = useMutation({
     mutationFn: () => campaignApi.syncTemplates(),
-    onSuccess: () => {
+    onSuccess: (res) => {
       queryClient.invalidateQueries({ queryKey: orgQueryKey(orgId, 'templates') })
       setLastSyncLabel(formatMessageTime(new Date().toISOString()))
-      toast.success('Templates synced from Meta')
+      const payload = (res.data?.data ?? {}) as { synced_count?: number; removed_count?: number }
+      const synced = payload.synced_count
+      const removed = payload.removed_count ?? 0
+      if (typeof synced === 'number') {
+        toast.success(
+          removed > 0
+            ? `Synced ${synced} from Meta · removed ${removed} deleted on Meta`
+            : `Synced ${synced} templates from Meta`,
+        )
+      } else {
+        toast.success(res.data?.message || 'Templates synced from Meta')
+      }
     },
     onError: () => toast.error('Sync failed'),
   })
@@ -315,13 +327,15 @@ export function TemplatesPage() {
     },
     onError: (err: { response?: { data?: { message?: string | Record<string, unknown>; error?: unknown } } }) => {
       const data = err.response?.data
-      const nested = data?.error as { submit_to_meta?: string[]; error?: { message?: string }; message?: string } | undefined
+      const nested = data?.error as { submit_to_meta?: string[]; error?: { message?: string; error_user_msg?: string }; message?: string } | undefined
       const text = (Array.isArray(nested?.submit_to_meta) && nested.submit_to_meta[0])
+        || nested?.error?.error_user_msg
         || nested?.error?.message
         || (typeof data?.message === 'string' ? data.message : undefined)
         || nested?.message
         || 'Failed to submit template to Meta'
-      toast.error(String(text))
+      const explained = explainMetaTemplateError(String(text))
+      toast.error(`${explained.summary}${explained.fix ? ` — ${explained.fix}` : ''}`)
     },
   })
 

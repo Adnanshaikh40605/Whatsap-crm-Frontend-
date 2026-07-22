@@ -83,6 +83,16 @@ export function validateVariablesSequential(body: string): string | null {
       return `Variables must be sequential starting at {{1}}. Found {{${nums[i]}}} before {{${i + 1}}}.`
     }
   }
+  const trimmed = body.trim()
+  if (/^\{\{\d+\}\}/.test(trimmed)) {
+    return 'Body cannot start with a variable. Add text before {{1}}.'
+  }
+  if (/\{\{\d+\}\}$/.test(trimmed)) {
+    return 'Body cannot end with a variable. Add text after the last variable.'
+  }
+  if (/\{\{\d+\}\}\s*\{\{\d+\}\}/.test(body)) {
+    return 'Variables cannot be placed next to each other. Add text between them.'
+  }
   return null
 }
 

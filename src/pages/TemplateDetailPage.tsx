@@ -16,6 +16,7 @@ import { useAuth } from '../context/AuthContext'
 import { formatDate } from '../lib/utils'
 import { useDeleteConfirm } from '../hooks/useDeleteConfirm'
 import { useToast } from '../components/common'
+import { explainMetaTemplateError } from '../lib/templateGuidance'
 import type { WhatsAppTemplate } from '../types/bot'
 
 const META_URL = 'https://business.facebook.com/wa/manage/message-templates/'
@@ -57,13 +58,15 @@ export function TemplateDetailPage() {
     },
     onError: (err: { response?: { data?: { message?: string | Record<string, unknown>; error?: unknown } } }) => {
       const data = err.response?.data
-      const nested = data?.error as { submit_to_meta?: string[]; error?: { message?: string }; message?: string } | undefined
+      const nested = data?.error as { submit_to_meta?: string[]; error?: { message?: string; error_user_msg?: string }; message?: string } | undefined
       const text = (Array.isArray(nested?.submit_to_meta) && nested.submit_to_meta[0])
+        || nested?.error?.error_user_msg
         || nested?.error?.message
         || (typeof data?.message === 'string' ? data.message : undefined)
         || nested?.message
         || 'Failed to submit template to Meta'
-      toast.error(String(text))
+      const explained = explainMetaTemplateError(String(text))
+      toast.error(`${explained.summary}${explained.fix ? ` — ${explained.fix}` : ''}`)
     },
   })
 
@@ -95,6 +98,9 @@ export function TemplateDetailPage() {
   const statusGroup = getTemplateStatusGroup(template)
   const isApproved = template.status === 'approved'
     || String(template.meta_status || '').toUpperCase() === 'APPROVED'
+  const rejectionHelp = template.rejected_reason
+    ? explainMetaTemplateError(template.rejected_reason)
+    : null
 
   return (
     <div className="w-full space-y-4 animate-fade-in">
@@ -225,9 +231,14 @@ export function TemplateDetailPage() {
                 <dd className="mt-1">{template.last_synced_at ? formatDate(template.last_synced_at) : '—'}</dd>
               </div>
               {template.rejected_reason && (
-                <div className="sm:col-span-2">
+                <div className="sm:col-span-2 rounded-lg border border-red-200 bg-red-50 p-3">
                   <dt className="text-xs font-semibold uppercase text-red-600">Rejection Reason</dt>
-                  <dd className="mt-1 text-red-700">{template.rejected_reason}</dd>
+                  <dd className="mt-1 text-sm text-red-800">{rejectionHelp?.summary || template.rejected_reason}</dd>
+                  {rejectionHelp?.fix && (
+                    <p className="mt-2 text-sm text-red-900">
+                      <span className="font-semibold">How to fix:</span> {rejectionHelp.fix}
+                    </p>
+                  )}
                 </div>
               )}
             </dl>

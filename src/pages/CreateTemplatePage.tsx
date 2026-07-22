@@ -24,12 +24,14 @@ import {
   type TemplateButton,
 } from '../lib/templateBuilder'
 import { TemplatePreview } from '../components/templates/TemplatePreview'
+import { TemplateGuidancePanel } from '../components/templates/TemplateGuidancePanel'
 import { Button } from '../components/ui/Button'
 import { useDeleteConfirm } from '../hooks/useDeleteConfirm'
 import { FeedbackMessage, useToast } from '../components/common'
 import { fetchAllCampaignTemplates } from '../lib/templateList'
 import { orgQueryKey } from '../lib/queryKeys'
 import { useAuth } from '../context/AuthContext'
+import { explainMetaTemplateError, wrapSelection, type GuidanceStep } from '../lib/templateGuidance'
 import type { WhatsAppTemplate } from '../types/bot'
 
 const WIZARD_STEPS = [
@@ -65,7 +67,11 @@ export function CreateTemplatePage() {
   const [langOpen, setLangOpen] = useState(false)
   const [submitPhase, setSubmitPhase] = useState<SubmitPhase>('idle')
   const [submitError, setSubmitError] = useState('')
+  const [submitFix, setSubmitFix] = useState('')
+  const bodyRef = useRef<HTMLTextAreaElement | null>(null)
   const fieldRefs = useRef<Record<string, HTMLElement | null>>({})
+
+  const guidanceStep = (WIZARD_STEPS[step]?.id || 'basics') as GuidanceStep
 
   const { data: templatesData } = useQuery({
     queryKey: orgQueryKey(orgId, 'templates', 'all'),
@@ -158,12 +164,14 @@ export function CreateTemplatePage() {
     if (allErrors.length) {
       setSubmitPhase('error')
       setSubmitError(allErrors.map((e) => e.message).join(' '))
+      setSubmitFix('Fix the highlighted fields in the wizard, then try again.')
       scrollToField(allErrors[0].field)
       setStep(allErrors[0].field === 'name' ? 0 : allErrors[0].field.startsWith('header') ? 1 : 2)
       return
     }
 
     setSubmitError('')
+    setSubmitFix('')
     try {
       setSubmitPhase('creating')
       await createTemplate.mutateAsync({ submitToMeta })
@@ -194,10 +202,30 @@ export function CreateTemplatePage() {
       } else if (typeof errObj.message === 'string') {
         text = errObj.message
       } else if (errObj.error && typeof errObj.error === 'object') {
-        text = String((errObj.error as { message?: string }).message || JSON.stringify(errObj.error))
+        const nested = errObj.error as { message?: string; error_user_msg?: string; error_user_title?: string }
+        text = nested.error_user_msg || nested.error_user_title || nested.message || JSON.stringify(errObj.error)
       }
-      setSubmitError(text)
+      const explained = explainMetaTemplateError(text)
+      setSubmitError(explained.summary)
+      setSubmitFix(explained.fix)
     }
+  }
+
+  const applyBodyFormat = (wrapper: string) => {
+    const el = bodyRef.current
+    if (!el) {
+      setForm((prev) => ({ ...prev, body: `${prev.body}${wrapper}text${wrapper}` }))
+      return
+    }
+    const start = el.selectionStart ?? form.body.length
+    const end = el.selectionEnd ?? form.body.length
+    const next = wrapSelection(form.body, start, end, wrapper)
+    setForm((prev) => ({ ...prev, body: next }))
+    requestAnimationFrame(() => {
+      el.focus()
+      const cursor = start + wrapper.length + (end - start || 4)
+      el.setSelectionRange(cursor, cursor)
+    })
   }
 
   const updateVariableExample = (num: number, value: string) => {
@@ -295,7 +323,9 @@ export function CreateTemplatePage() {
                     style={{ background: 'var(--bg)', borderColor: errorsByField.name ? '#dc2626' : 'var(--border)' }}
                   />
                   <FieldHint error={errorsByField.name} />
-                  <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Lowercase, numbers, underscores only. Max 512 chars.</p>
+                  <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
+                    Lowercase, numbers, underscores only. Example: <code>pest_booking_confirm</code>
+                  </p>
                 </label>
 
                 <label className={labelClass} style={{ color: 'var(--text-primary)' }}>
@@ -306,11 +336,14 @@ export function CreateTemplatePage() {
                     className={inputClass}
                     style={{ background: 'var(--bg)', borderColor: 'var(--border)' }}
                   >
-                    <option value="authentication">Authentication</option>
-                    <option value="utility">Utility</option>
-                    <option value="marketing">Marketing</option>
+                    <option value="utility">Utility — transactional updates</option>
+                    <option value="marketing">Marketing — offers & promotions</option>
+                    <option value="authentication">Authentication — OTP / login</option>
                   </select>
                   <p className="text-xs italic" style={{ color: 'var(--text-muted)' }}>{CATEGORY_DESCRIPTIONS[form.category]}</p>
+                  <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
+                    Wrong category is a common rejection. Utility must not include discounts or “buy now” language.
+                  </p>
                 </label>
 
                 <div className="relative" ref={(el) => { fieldRefs.current.language = el }}>
@@ -423,12 +456,32 @@ export function CreateTemplatePage() {
                 <div ref={(el) => { fieldRefs.current.body = el }}>
                   <label className={labelClass} style={{ color: 'var(--text-primary)' }}>
                     Message Body
+                    <div className="mb-2 flex flex-wrap gap-1.5">
+                      {[
+                        { label: 'B', title: 'Bold (*text*)', wrapper: '*' },
+                        { label: 'I', title: 'Italic (_text_)', wrapper: '_' },
+                        { label: 'S', title: 'Strikethrough (~text~)', wrapper: '~' },
+                        { label: '<>', title: 'Monospace (```text```)', wrapper: '```' },
+                      ].map((fmt) => (
+                        <button
+                          key={fmt.label}
+                          type="button"
+                          title={fmt.title}
+                          onClick={() => applyBodyFormat(fmt.wrapper)}
+                          className="rounded border px-2 py-1 text-xs font-bold hover:bg-[var(--hover)]"
+                          style={{ borderColor: 'var(--border)', color: 'var(--text-primary)' }}
+                        >
+                          {fmt.label}
+                        </button>
+                      ))}
+                    </div>
                     <textarea
+                      ref={bodyRef}
                       value={form.body}
                       onChange={(e) => setForm({ ...form, body: e.target.value })}
                       rows={8}
                       maxLength={1024}
-                      placeholder="Hello {{1}}, your order {{2}} is confirmed."
+                      placeholder={"Hello {{1}},\n\nYour booking *{{2}}* is confirmed for _{{3}}_."}
                       className="w-full rounded-lg border px-3 py-2 text-sm focus:border-[#1876f2] focus:outline-none"
                       style={{ background: 'var(--bg)', borderColor: errorsByField.body ? '#dc2626' : 'var(--border)' }}
                     />
@@ -439,6 +492,9 @@ export function CreateTemplatePage() {
                     </Button>
                     <span className="text-xs" style={{ color: 'var(--text-muted)' }}>{form.body.length} / 1024</span>
                   </div>
+                  <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
+                    Select text then click B / I / S for formatting. Do not start or end the body with {'{{1}}'}.
+                  </p>
                   <FieldHint error={errorsByField.body} />
                 </div>
 
@@ -666,7 +722,15 @@ export function CreateTemplatePage() {
                       <FeedbackMessage variant="success">Completed — redirecting to templates...</FeedbackMessage>
                     )}
                     {submitPhase === 'error' && (
-                      <FeedbackMessage variant="error">{submitError}</FeedbackMessage>
+                      <FeedbackMessage variant="error">
+                        <p className="font-semibold">Meta / validation error</p>
+                        <p className="mt-1 font-normal">{submitError}</p>
+                        {submitFix && (
+                          <p className="mt-2 font-normal text-red-800">
+                            <span className="font-semibold">How to fix:</span> {submitFix}
+                          </p>
+                        )}
+                      </FeedbackMessage>
                     )}
                   </div>
                 )}
@@ -703,8 +767,11 @@ export function CreateTemplatePage() {
           </div>
         </div>
 
-        <div className="sticky top-0 flex w-full shrink-0 items-start justify-center bg-slate-50 px-4 py-6 lg:w-[300px] lg:min-h-full xl:w-[320px]">
-          <TemplatePreview form={form} businessName="Driver On Hire" />
+        <div className="sticky top-0 flex w-full shrink-0 flex-col gap-4 bg-slate-50 px-4 py-6 lg:w-[340px] lg:min-h-full xl:w-[360px]">
+          <TemplateGuidancePanel step={guidanceStep} category={form.category} />
+          <div className="flex justify-center">
+            <TemplatePreview form={form} businessName={organization?.name || 'Your Business'} />
+          </div>
         </div>
       </div>
       {deleteDialog}
