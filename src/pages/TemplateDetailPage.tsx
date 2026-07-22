@@ -98,8 +98,15 @@ export function TemplateDetailPage() {
   const statusGroup = getTemplateStatusGroup(template)
   const isApproved = template.status === 'approved'
     || String(template.meta_status || '').toUpperCase() === 'APPROVED'
-  const rejectionHelp = template.rejected_reason
-    ? explainMetaTemplateError(template.rejected_reason)
+  // Meta often stores "NONE" for approved templates — that is not a real rejection.
+  const rejectedReason = String(template.rejected_reason || '').trim()
+  const hasRealRejection = Boolean(
+    rejectedReason
+    && !['NONE', 'NULL', 'N/A', '-'].includes(rejectedReason.toUpperCase())
+    && !isApproved,
+  )
+  const rejectionHelp = hasRealRejection
+    ? explainMetaTemplateError(rejectedReason)
     : null
 
   return (
@@ -230,10 +237,10 @@ export function TemplateDetailPage() {
                 <dt className="text-xs font-semibold uppercase" style={{ color: 'var(--text-muted)' }}>Last Synced</dt>
                 <dd className="mt-1">{template.last_synced_at ? formatDate(template.last_synced_at) : '—'}</dd>
               </div>
-              {template.rejected_reason && (
+              {hasRealRejection && (
                 <div className="sm:col-span-2 rounded-lg border border-red-200 bg-red-50 p-3">
                   <dt className="text-xs font-semibold uppercase text-red-600">Rejection Reason</dt>
-                  <dd className="mt-1 text-sm text-red-800">{rejectionHelp?.summary || template.rejected_reason}</dd>
+                  <dd className="mt-1 text-sm text-red-800">{rejectionHelp?.summary || rejectedReason}</dd>
                   {rejectionHelp?.fix && (
                     <p className="mt-2 text-sm text-red-900">
                       <span className="font-semibold">How to fix:</span> {rejectionHelp.fix}
