@@ -1,4 +1,5 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   AlertTriangle, Copy, Download, Eye, KeyRound, MoreVertical,
@@ -91,38 +92,97 @@ function RowMenu({
   onDelete: () => void
 }) {
   const [open, setOpen] = useState(false)
+  const [coords, setCoords] = useState({ top: 0, left: 0 })
+  const btnRef = useRef<HTMLButtonElement>(null)
+  const menuRef = useRef<HTMLDivElement>(null)
+  const MENU_WIDTH = 188
+  const MENU_EST_HEIGHT = 180
+
+  const updatePosition = () => {
+    const rect = btnRef.current?.getBoundingClientRect()
+    if (!rect) return
+    const spaceBelow = window.innerHeight - rect.bottom
+    const openUp = spaceBelow < MENU_EST_HEIGHT && rect.top > MENU_EST_HEIGHT
+    const top = openUp ? rect.top - MENU_EST_HEIGHT - 4 : rect.bottom + 4
+    const left = Math.min(
+      Math.max(8, rect.right - MENU_WIDTH),
+      window.innerWidth - MENU_WIDTH - 8,
+    )
+    setCoords({ top, left })
+  }
+
+  useEffect(() => {
+    if (!open) return
+    updatePosition()
+    const close = (e: MouseEvent) => {
+      const target = e.target as Node
+      if (btnRef.current?.contains(target) || menuRef.current?.contains(target)) return
+      setOpen(false)
+    }
+    const onScrollOrResize = () => setOpen(false)
+    document.addEventListener('mousedown', close)
+    window.addEventListener('resize', onScrollOrResize)
+    // Close on scroll of any scrollable ancestor / main pane
+    window.addEventListener('scroll', onScrollOrResize, true)
+    return () => {
+      document.removeEventListener('mousedown', close)
+      window.removeEventListener('resize', onScrollOrResize)
+      window.removeEventListener('scroll', onScrollOrResize, true)
+    }
+  }, [open])
+
+  const items = [
+    { icon: Eye, label: 'View details', action: onView },
+    { icon: RefreshCw, label: 'Regenerate', action: onRegenerate },
+    { icon: KeyRound, label: keyRecord.is_active ? 'Disable' : 'Enable', action: onToggle },
+    { icon: Trash2, label: 'Delete', action: onDelete, danger: true },
+  ] as const
 
   return (
-    <div className="relative">
+    <div className="relative" onClick={(e) => e.stopPropagation()}>
       <button
+        ref={btnRef}
         type="button"
-        onClick={() => setOpen((v) => !v)}
+        onClick={() => {
+          if (!open) updatePosition()
+          setOpen((v) => !v)
+        }}
         className="rounded-lg p-2 hover:bg-black/5"
         aria-label="Actions"
+        aria-expanded={open}
       >
         <MoreVertical className="h-4 w-4" style={{ color: 'var(--text-muted)' }} />
       </button>
-      {open && (
-        <>
-          <button type="button" className="fixed inset-0 z-10" onClick={() => setOpen(false)} aria-label="Close menu" />
-          <div
-            className="absolute right-0 z-20 mt-1 min-w-[180px] rounded-xl border py-1 shadow-lg"
-            style={{ borderColor: 'var(--border)', background: 'var(--bg-card)' }}
-          >
-            <button type="button" className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-black/5" onClick={() => { setOpen(false); onView() }}>
-              <Eye className="h-4 w-4" /> View details
+      {open && createPortal(
+        <div
+          ref={menuRef}
+          role="menu"
+          className="fixed z-[1000] min-w-[180px] rounded-xl border py-1 shadow-lg"
+          style={{
+            top: coords.top,
+            left: coords.left,
+            width: MENU_WIDTH,
+            borderColor: 'var(--border)',
+            background: 'var(--bg-card)',
+          }}
+        >
+          {items.map(({ icon: Icon, label, action, danger }) => (
+            <button
+              key={label}
+              type="button"
+              role="menuitem"
+              className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-black/5"
+              style={{ color: danger ? 'var(--critical)' : 'var(--text-primary)' }}
+              onClick={() => {
+                setOpen(false)
+                action()
+              }}
+            >
+              <Icon className="h-4 w-4" /> {label}
             </button>
-            <button type="button" className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-black/5" onClick={() => { setOpen(false); onRegenerate() }}>
-              <RefreshCw className="h-4 w-4" /> Regenerate
-            </button>
-            <button type="button" className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-black/5" onClick={() => { setOpen(false); onToggle() }}>
-              <KeyRound className="h-4 w-4" /> {keyRecord.is_active ? 'Disable' : 'Enable'}
-            </button>
-            <button type="button" className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-red-600 hover:bg-red-50" onClick={() => { setOpen(false); onDelete() }}>
-              <Trash2 className="h-4 w-4" /> Delete
-            </button>
-          </div>
-        </>
+          ))}
+        </div>,
+        document.body,
       )}
     </div>
   )
@@ -241,7 +301,7 @@ export function ApiKeysPanel() {
   }
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-5 pb-8">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
@@ -261,7 +321,7 @@ export function ApiKeysPanel() {
         </div>
       </div>
 
-      <div className="overflow-hidden rounded-xl border" style={{ borderColor: 'var(--border)' }}>
+      <div className="rounded-xl border" style={{ borderColor: 'var(--border)' }}>
         <div className="overflow-x-auto">
           <table className="w-full min-w-[900px] text-left text-sm">
             <thead style={{ background: 'var(--bg-subtle)' }}>

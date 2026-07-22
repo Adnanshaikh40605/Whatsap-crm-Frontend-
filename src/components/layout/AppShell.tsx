@@ -219,7 +219,9 @@ export function AppShell() {
           sx={{
             flex: 1,
             minHeight: 0,
-            overflow: isInboxRoute ? 'hidden' : 'auto',
+            overflowY: isInboxRoute ? 'hidden' : 'auto',
+            overflowX: 'hidden',
+            WebkitOverflowScrolling: 'touch',
             bgcolor: 'background.default',
             p: mainPadding,
             position: 'relative',
