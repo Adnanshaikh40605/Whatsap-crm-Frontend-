@@ -51,6 +51,8 @@ function FilterChip({
   return (
     <button
       type="button"
+      role="radio"
+      aria-checked={active}
       onClick={onClick}
       className="rounded-full border px-3 py-1.5 text-xs font-bold transition-colors"
       style={{
@@ -238,8 +240,8 @@ export function TemplatesPage() {
   const queryClient = useQueryClient()
   const toast = useToast()
   const [search, setSearch] = useState('')
-  const [statusFilters, setStatusFilters] = useState<Set<StatusFilter>>(new Set(['all']))
-  const [categoryFilters, setCategoryFilters] = useState<Set<CategoryFilter>>(new Set())
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>('all')
+  const [categoryFilter, setCategoryFilter] = useState<CategoryFilter | null>(null)
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [page, setPage] = useState(1)
   const [pageSize, setPageSize] = useState<(typeof PAGE_SIZES)[number]>(25)
@@ -263,9 +265,9 @@ export function TemplatesPage() {
 
   const filtered = useMemo(() => {
     const searched = allTemplates.filter((t) => matchesSearch(t, search))
-    const matched = searched.filter((t) => matchesFilters(t, statusFilters, categoryFilters))
+    const matched = searched.filter((t) => matchesFilters(t, statusFilter, categoryFilter))
     return sortTemplates(matched)
-  }, [allTemplates, search, statusFilters, categoryFilters])
+  }, [allTemplates, search, statusFilter, categoryFilter])
 
   const grouped = useMemo(() => groupTemplatesByStatus(filtered), [filtered])
   const flatForPagination = useMemo(() => grouped.flatMap((g) => g.items), [grouped])
@@ -283,8 +285,8 @@ export function TemplatesPage() {
   useEffect(() => {
     setPage(1)
     setSelectedIds(new Set())
-    setStatusFilters(new Set(['all']))
-    setCategoryFilters(new Set())
+    setStatusFilter('all')
+    setCategoryFilter(null)
     setSearch('')
   }, [orgId])
 
@@ -347,27 +349,15 @@ export function TemplatesPage() {
     },
   })
 
-  const toggleStatusFilter = (id: StatusFilter) => {
+  const selectStatusFilter = (id: StatusFilter) => {
     setPage(1)
-    setStatusFilters((prev) => {
-      if (id === 'all') return new Set(['all'])
-      const next = new Set(prev)
-      next.delete('all')
-      if (next.has(id)) next.delete(id)
-      else next.add(id)
-      if (next.size === 0) next.add('all')
-      return next
-    })
+    setStatusFilter(id)
   }
 
-  const toggleCategoryFilter = (id: CategoryFilter) => {
+  const selectCategoryFilter = (id: CategoryFilter) => {
     setPage(1)
-    setCategoryFilters((prev) => {
-      const next = new Set(prev)
-      if (next.has(id)) next.delete(id)
-      else next.add(id)
-      return next
-    })
+    // Clicking the active category clears it (show all categories).
+    setCategoryFilter((prev) => (prev === id ? null : id))
   }
 
   const toggleSelect = (id: string, checked: boolean) => {
@@ -461,24 +451,28 @@ export function TemplatesPage() {
           </div>
         </div>
 
-        <div className="flex flex-wrap gap-2">
-          {STATUS_FILTERS.map((f) => (
-            <FilterChip
-              key={f.id}
-              label={f.label}
-              active={statusFilters.has(f.id)}
-              onClick={() => toggleStatusFilter(f.id)}
-            />
-          ))}
-          <span className="mx-1 self-center text-xs" style={{ color: 'var(--border)' }}>|</span>
-          {CATEGORY_FILTERS.map((f) => (
-            <FilterChip
-              key={f.id}
-              label={f.label}
-              active={categoryFilters.has(f.id)}
-              onClick={() => toggleCategoryFilter(f.id)}
-            />
-          ))}
+        <div className="flex flex-wrap items-center gap-2" role="toolbar" aria-label="Template filters">
+          <div className="flex flex-wrap gap-2" role="radiogroup" aria-label="Status">
+            {STATUS_FILTERS.map((f) => (
+              <FilterChip
+                key={f.id}
+                label={f.label}
+                active={statusFilter === f.id}
+                onClick={() => selectStatusFilter(f.id)}
+              />
+            ))}
+          </div>
+          <span className="mx-1 self-center text-xs" style={{ color: 'var(--border)' }} aria-hidden>|</span>
+          <div className="flex flex-wrap gap-2" role="radiogroup" aria-label="Category">
+            {CATEGORY_FILTERS.map((f) => (
+              <FilterChip
+                key={f.id}
+                label={f.label}
+                active={categoryFilter === f.id}
+                onClick={() => selectCategoryFilter(f.id)}
+              />
+            ))}
+          </div>
         </div>
       </div>
 

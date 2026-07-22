@@ -66,19 +66,16 @@ export function matchesSearch(template: WhatsAppTemplate, query: string) {
 
 export function matchesFilters(
   template: WhatsAppTemplate,
-  statusFilters: Set<StatusFilter>,
-  categoryFilters: Set<CategoryFilter>,
+  statusFilter: StatusFilter,
+  categoryFilter: CategoryFilter | null,
 ) {
-  const statusActive = [...statusFilters].filter((f) => f !== 'all')
-  const categoryActive = [...categoryFilters]
-
-  if (statusActive.length > 0) {
+  if (statusFilter !== 'all') {
     const bucket = toFilterStatus(getTemplateStatusGroup(template))
-    if (!statusActive.includes(bucket)) return false
+    if (bucket !== statusFilter) return false
   }
 
-  if (categoryActive.length > 0) {
-    if (!categoryActive.includes(template.category as CategoryFilter)) return false
+  if (categoryFilter) {
+    if (template.category !== categoryFilter) return false
   }
 
   return true
