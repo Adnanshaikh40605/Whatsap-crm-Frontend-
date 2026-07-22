@@ -12,12 +12,15 @@ interface TemplatePreviewProps {
   businessName?: string
   /** Slightly smaller width for detail-page sidebar. */
   compact?: boolean
+  /** Hide the “iOS Preview” caption (e.g. when parent already labels the stage). */
+  hideCaption?: boolean
 }
 
 export function TemplatePreview({
   form,
   businessName = 'Your Business',
   compact = false,
+  hideCaption = false,
 }: TemplatePreviewProps) {
   const bodyText = renderBodyPreview(form.body, form.variableExamples)
   const hasHeaderMedia = ['image', 'video', 'document'].includes(form.headerType) && form.headerMediaPreviewUrl
@@ -27,12 +30,14 @@ export function TemplatePreview({
 
   return (
     <div className={cn('flex w-full flex-col items-center', compact ? 'max-w-[230px]' : 'max-w-[280px]')}>
-      <div className="mb-3 w-full px-1">
-        <p className="text-sm font-bold text-[var(--color-text-primary)]">iOS Preview</p>
-        <p className="mt-1 text-[11px] leading-snug text-[var(--color-text-muted)]">
-          Visualization of how your template may appear in WhatsApp. Actual look can vary by device.
-        </p>
-      </div>
+      {!hideCaption && (
+        <div className="mb-3 w-full px-1">
+          <p className="text-sm font-bold text-[var(--color-text-primary)]">iOS Preview</p>
+          <p className="mt-1 text-[11px] leading-snug text-[var(--color-text-muted)]">
+            Visualization of how your template may appear in WhatsApp. Actual look can vary by device.
+          </p>
+        </div>
+      )}
 
       <IPhonePreviewFrame width={phoneWidth}>
         <div className="flex h-full flex-col bg-[#efeae2]">
