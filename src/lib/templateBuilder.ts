@@ -65,24 +65,49 @@ export function insertNextVariable(body: string): string {
 }
 
 export function validateTemplateName(name: string, existingNames: string[] = []): string | null {
-  const normalized = normalizeTemplateName(name)
-  if (!normalized) return 'Template name is required.'
-  if (normalized.length > 512) return 'Template name must be 512 characters or fewer.'
-  if (!/^[a-z0-9_]+$/.test(normalized)) {
-    return 'Only lowercase letters, numbers and underscores are allowed.'
+  const raw = name.trim()
+  if (!raw) return 'Template name is required.'
+  if (raw.length > 512) return 'Maximum 512 characters allowed.'
+  if (/\s/.test(name)) return 'No spaces are allowed. Use underscores instead (e.g. pest_booking_confirm).'
+  if (/[A-Z]/.test(name)) return 'Use only lowercase letters, numbers, and underscores.'
+  if (/[^a-z0-9_]/.test(name)) return 'Special characters are not allowed. Use only lowercase letters, numbers, and underscores.'
+  if (/^\d/.test(name)) return 'Template name cannot start with a number.'
+  if (!/^[a-z][a-z0-9_]*$/.test(name)) {
+    return 'Use only lowercase letters, numbers, and underscores.'
   }
-  if (existingNames.includes(normalized)) return 'This template name already exists for the selected language.'
+  const normalized = normalizeTemplateName(name)
+  if (existingNames.includes(normalized)) return 'Template name already exists for this language.'
+  return null
+}
+
+export function describeMissingVariables(nums: number[]): string | null {
+  if (!nums.length) return null
+  const missing: number[] = []
+  const max = Math.max(...nums)
+  for (let i = 1; i <= max; i += 1) {
+    if (!nums.includes(i)) missing.push(i)
+  }
+  if (!missing.length && nums[0] === 1 && nums.every((n, idx) => n === idx + 1)) return null
+  if (missing.length) {
+    return `Missing ${missing.map((n) => `{{${n}}}`).join(', ')}. Variable numbering must be sequential ({{1}}, {{2}}, {{3}}).`
+  }
+  if (nums[0] !== 1) {
+    return 'Variables must be sequential starting at {{1}}.'
+  }
   return null
 }
 
 export function validateVariablesSequential(body: string): string | null {
   const nums = extractVariableNumbers(body)
   if (!nums.length) return null
-  for (let i = 0; i < nums.length; i += 1) {
-    if (nums[i] !== i + 1) {
-      return `Variables must be sequential starting at {{1}}. Found {{${nums[i]}}} before {{${i + 1}}}.`
-    }
+
+  const missingMsg = describeMissingVariables(nums)
+  if (missingMsg) return missingMsg
+
+  if (/\{\{(?!\d+\})[^}]*\}\}/.test(body)) {
+    return 'Invalid variable format. Use {{1}}, {{2}}, {{3}} only.'
   }
+
   const trimmed = body.trim()
   if (/^\{\{\d+\}\}/.test(trimmed)) {
     return 'Body cannot start with a variable. Add text before {{1}}.'
@@ -92,6 +117,94 @@ export function validateVariablesSequential(body: string): string | null {
   }
   if (/\{\{\d+\}\}\s*\{\{\d+\}\}/.test(body)) {
     return 'Variables cannot be placed next to each other. Add text between them.'
+  }
+  if (nums.length > 10) {
+    return 'Too many variables. Keep templates focused with fewer placeholders.'
+  }
+  return null
+}
+
+export function validateHeaderText(headerText: string): string | null {
+  const text = headerText.trim()
+  if (!text) return 'Header text cannot be empty.'
+  if (headerText.length > 60) return 'Header text cannot exceed 60 characters.'
+  const nums = extractVariableNumbers(headerText)
+  const missingMsg = describeMissingVariables(nums)
+  if (missingMsg) return missingMsg
+  return null
+}
+
+const UTILITY_PROMO_WORDS = [
+  'discount', 'offer', 'sale', 'free', 'buy now', 'coupon', 'limited time',
+  'promo', '% off', 'deal', 'save now', 'flash sale',
+]
+
+const MARKETING_PROMO_HINTS = [
+  'discount', 'offer', 'sale', 'free', 'buy', 'coupon', 'promo', '%', 'deal', 'off',
+]
+
+const AUTH_HINTS = [
+  'otp', 'code', 'verification', 'verify', 'passcode', 'one-time', 'one time',
+]
+
+export function getTemplateContentText(form: TemplateBuilderForm): string {
+  return [
+    form.headerText,
+    form.body,
+    form.footer,
+    ...form.buttons.map((b) => `${b.text} ${b.value}`),
+  ].join(' ').toLowerCase()
+}
+
+export function validateCategoryContent(form: TemplateBuilderForm): FieldError[] {
+  const errors: FieldError[] = []
+  const text = getTemplateContentText(form)
+
+  if (form.category === 'utility') {
+    const hit = UTILITY_PROMO_WORDS.find((w) => text.includes(w))
+    if (hit) {
+      errors.push({
+        field: 'category',
+        message: 'Promotional content is not allowed in Utility templates. Choose the Marketing category instead.',
+      })
+    }
+  }
+
+  if (form.category === 'marketing') {
+    // Soft guidance only — handled in UI via getCategoryHint().
+  }
+
+  if (form.category === 'authentication') {
+    if (!form.body.trim()) {
+      errors.push({ field: 'body', message: 'OTP message body is required.' })
+    } else {
+      const hasOtpHint = AUTH_HINTS.some((w) => text.includes(w))
+      const hasCodeVar = extractVariableNumbers(form.body).includes(1)
+      if (!hasOtpHint) {
+        errors.push({
+          field: 'body',
+          message: 'Authentication templates should mention a verification code / OTP.',
+        })
+      }
+      if (!hasCodeVar) {
+        errors.push({
+          field: 'body',
+          message: 'OTP variable is missing. Include {{1}} for the verification code.',
+        })
+      }
+    }
+  }
+
+  return errors
+}
+
+export function getCategoryHint(form: TemplateBuilderForm): string | null {
+  const text = getTemplateContentText(form)
+  if (form.category === 'marketing' && form.body.trim()) {
+    const hasPromo = MARKETING_PROMO_HINTS.some((w) => text.includes(w))
+    if (!hasPromo) {
+      return 'This message appears transactional. Consider using the Utility category.'
+    }
   }
   return null
 }
@@ -111,19 +224,21 @@ export function validateVariableExamples(
 
 export function validateUrl(url: string): string | null {
   if (!url.trim()) return 'URL is required.'
+  if (!/^https:\/\//i.test(url.trim())) return 'URL must start with https://'
   try {
     const parsed = new URL(url)
-    if (!['http:', 'https:'].includes(parsed.protocol)) return 'URL must start with http:// or https://'
+    if (parsed.protocol !== 'https:') return 'URL must start with https://'
     return null
   } catch {
-    return 'Enter a valid URL (e.g. https://vacationbna.com).'
+    return 'Enter a valid URL (e.g. https://example.com).'
   }
 }
 
 export function validateE164(phone: string): string | null {
   if (!phone.trim()) return 'Phone number is required.'
+  if (!phone.trim().startsWith('+')) return 'Country code required. Use E.164 format (e.g. +919372792693).'
   if (!/^\+[1-9]\d{7,14}$/.test(phone.trim())) {
-    return 'Use E.164 format (e.g. +919372792693).'
+    return 'Invalid phone number. Use E.164 format (e.g. +919372792693).'
   }
   return null
 }
@@ -195,6 +310,8 @@ export function canAddButtonType(buttons: TemplateButton[], type: ButtonType): b
 
 export function validateButtons(buttons: TemplateButton[]): string | null {
   if (!buttons.length) return null
+  if (buttons.length > 10) return 'Maximum 10 buttons are allowed.'
+
   const quickReplies = buttons.filter((b) => b.type === 'quick_reply')
   const ctas = buttons.filter((b) => isCtaButtonType(b.type))
   if (quickReplies.length && ctas.length) {
@@ -206,9 +323,15 @@ export function validateButtons(buttons: TemplateButton[]): string | null {
   if (ctas.length > MAX_CTA_BUTTONS) {
     return `Maximum ${MAX_CTA_BUTTONS} CTA buttons allowed.`
   }
+
+  const labels = buttons.map((b) => b.text.trim().toLowerCase()).filter(Boolean)
+  if (new Set(labels).size !== labels.length) {
+    return 'Duplicate button names are not allowed.'
+  }
+
   for (const btn of buttons) {
     if (!btn.text.trim()) return 'Every button needs button text.'
-    if (btn.text.length > 25) return 'Button text must be 25 characters or fewer.'
+    if (btn.text.length > 25) return 'Quick Reply / button text must be 25 characters or fewer.'
     if (btn.type === 'url') {
       const err = validateUrl(btn.value)
       if (err) return err
@@ -233,12 +356,12 @@ export function validateTemplateForm(
   const nameErr = validateTemplateName(form.name, existingNames)
   if (nameErr) errors.push({ field: 'name', message: nameErr })
 
-  if (!form.category) errors.push({ field: 'category', message: 'Category is required.' })
-  if (!form.language) errors.push({ field: 'language', message: 'Language is required.' })
+  if (!form.category) errors.push({ field: 'category', message: 'Please select a template category.' })
+  if (!form.language) errors.push({ field: 'language', message: 'Please select a language.' })
 
   if (form.headerType === 'text') {
-    if (!form.headerText.trim()) errors.push({ field: 'headerText', message: 'Header text is required.' })
-    if (form.headerText.length > 60) errors.push({ field: 'headerText', message: 'Header text max 60 characters.' })
+    const headerErr = validateHeaderText(form.headerText)
+    if (headerErr) errors.push({ field: 'headerText', message: headerErr })
   }
 
   if (['image', 'video', 'document'].includes(form.headerType)) {
@@ -247,8 +370,8 @@ export function validateTemplateForm(
     }
   }
 
-  if (!form.body.trim()) errors.push({ field: 'body', message: 'Body is required.' })
-  if (form.body.length > 1024) errors.push({ field: 'body', message: 'Body max 1024 characters.' })
+  if (!form.body.trim()) errors.push({ field: 'body', message: 'Body cannot be empty.' })
+  if (form.body.length > 1024) errors.push({ field: 'body', message: 'Body cannot exceed 1024 characters.' })
 
   const varSeq = validateVariablesSequential(form.body)
   if (varSeq) errors.push({ field: 'body', message: varSeq })
@@ -256,16 +379,32 @@ export function validateTemplateForm(
   const varEx = validateVariableExamples(form.body, form.variableExamples)
   if (varEx) errors.push({ field: 'variableExamples', message: varEx })
 
-  if (form.footer.length > 60) errors.push({ field: 'footer', message: 'Footer max 60 characters.' })
+  if (form.footer.length > 60) {
+    errors.push({ field: 'footer', message: 'Footer cannot exceed 60 characters.' })
+  }
 
   const btnErr = validateButtons(form.buttons)
   if (btnErr) errors.push({ field: 'buttons', message: btnErr })
 
-  return errors
+  errors.push(...validateCategoryContent(form))
+
+  // De-dupe by field keeping first message (name/body may get category extras).
+  const seen = new Set<string>()
+  return errors.filter((e) => {
+    const key = `${e.field}:${e.message}`
+    if (seen.has(key)) return false
+    seen.add(key)
+    return true
+  })
 }
 
 export function isTemplateFormValid(form: TemplateBuilderForm, existingNames: string[] = []): boolean {
   return validateTemplateForm(form, existingNames).length === 0
+}
+
+export function wrapSelection(text: string, start: number, end: number, wrapper: string): string {
+  const selected = text.slice(start, end) || 'text'
+  return `${text.slice(0, start)}${wrapper}${selected}${wrapper}${text.slice(end)}`
 }
 
 export function renderBodyPreview(body: string, examples: Record<number, string>): string {
