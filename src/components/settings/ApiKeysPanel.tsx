@@ -131,12 +131,17 @@ function RowMenu({
     }
   }, [open])
 
-  const items = [
+  const items: {
+    icon: typeof Eye
+    label: string
+    action: () => void
+    danger?: boolean
+  }[] = [
     { icon: Eye, label: 'View API key', action: onView },
     { icon: RefreshCw, label: 'Regenerate & reveal', action: onRegenerate },
     { icon: KeyRound, label: keyRecord.is_active ? 'Disable' : 'Enable', action: onToggle },
     { icon: Trash2, label: 'Delete', action: onDelete, danger: true },
-  ] as const
+  ]
 
   return (
     <div className="relative" onClick={(e) => e.stopPropagation()}>
